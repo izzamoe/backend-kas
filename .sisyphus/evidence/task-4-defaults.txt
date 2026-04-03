@@ -1,0 +1,7 @@
+Verified dashboard default behavior in internal/handler/report_handler.go.
+
+Command results:
+- grep -n "time.Now()" internal/handler/report_handler.go
+  - 98:    now := time.Now()
+
+This confirms time.Now() is used in the dashboard handler.

@@ -1,0 +1,9 @@
+Verified monthly handler requirements remain unchanged in internal/handler/report_handler.go.
+
+Command results:
+- grep "year is required" internal/handler/report_handler.go
+  - return e.BadRequestError("year is required", nil)
+- grep "month is required" internal/handler/report_handler.go
+  - return e.BadRequestError("month is required", nil)
+
+This confirms GetMonthlyReport still requires explicit year and month.

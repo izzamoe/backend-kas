@@ -6,6 +6,7 @@ import (
 	"kas/internal/service"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/hook"
@@ -91,19 +92,18 @@ func (h *ReportHandler) GetDashboardSummary(e *core.RequestEvent) error {
 		return e.InternalServerError("family_id not found in context", nil)
 	}
 
-	// Get query parameters
 	yearStr := e.Request.URL.Query().Get("year")
 	monthStr := e.Request.URL.Query().Get("month")
 
-	// Validate required parameters
+	now := time.Now()
+
 	if yearStr == "" {
-		return e.BadRequestError("year is required", nil)
+		yearStr = strconv.Itoa(now.Year())
 	}
 	if monthStr == "" {
-		return e.BadRequestError("month is required", nil)
+		monthStr = strconv.Itoa(int(now.Month()))
 	}
 
-	// Parse year and month
 	year, err := strconv.Atoi(yearStr)
 	if err != nil || year < 1900 || year > 2100 {
 		return e.BadRequestError("invalid year", err)
