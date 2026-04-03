@@ -12,3 +12,8 @@
 - PocketBase's `core.RequestEvent` has unexported fields and cannot be directly instantiated in unit tests - integration tests with actual PocketBase server required for full middleware testing.
 - Unit tests verify middleware dependencies (mock repository behavior, context helpers) separately - all 4 tests pass with `go test ./internal/middleware/... -v`.
 - Verification completed: `go build ./internal/middleware/...` exit code 0, LSP diagnostics clean (0 errors in 3 files).
+- Wired `RequireFamily` into report route registration by storing a `*hook.Handler[*core.RequestEvent]` in `ReportHandler` and calling `.Bind(h.requireFamily)` on both `/api/reports/monthly` and `/api/reports/summary`.
+- `go build ./...` completed successfully after the wiring update, confirming the middleware constructor and router binding types matched PocketBase's `Bind` API.
+- Updated `internal/handler/report_handler.go` so both report handlers read `family_id` from `middleware.GetFamilyIDFromContext(e.Request.Context())` instead of query params, while keeping year/month validation unchanged.
+- Route doc comments now reflect the middleware-driven API shape (`/api/reports/monthly?year=...&month=...` and `/api/reports/summary?year=...&month=...`).
+- Verification for this change passed with `go build ./...` and zero LSP diagnostics on `internal/handler/report_handler.go`.
