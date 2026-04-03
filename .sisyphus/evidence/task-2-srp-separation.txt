@@ -1,0 +1,12 @@
+Refactor: RequireFamily now only handles family membership.
+
+Verified in internal/middleware/auth.go:
+- RequireFamily defensive guard now returns InternalServerError("RequireFamily: authentication middleware not applied", nil) when e.Auth is nil.
+- RequireFamily comment updated to require chaining after RequireAuth.
+- RequireAuth remains unchanged and still owns UnauthorizedError.
+
+Checks:
+- grep -n "UnauthorizedError\|InternalServerError\|authentication middleware not applied" internal/middleware/auth.go
+- lsp_diagnostics on internal/middleware/auth.go: no diagnostics found
+- go build ./...: PASS
+- go test ./internal/middleware/... -v: PASS

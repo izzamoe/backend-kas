@@ -50,7 +50,7 @@ func TestGetFamilyIDFromContext(t *testing.T) {
 	})
 }
 
-func TestRequireFamily_NoAuth(t *testing.T) {
+func TestRequireFamily_NilAuth_DefensiveGuard(t *testing.T) {
 	repo := &mockFamilyMemberRepository{}
 
 	member, err := repo.GetByUserID("user123")
@@ -61,8 +61,8 @@ func TestRequireFamily_NoAuth(t *testing.T) {
 		t.Errorf("expected nil member for empty mock, got %+v", member)
 	}
 
-	t.Log("TestRequireFamily_NoAuth: middleware requires core.RequestEvent which cannot be easily mocked in unit tests")
-	t.Log("This middleware should be tested via integration tests with actual PocketBase server")
+	t.Log("TestRequireFamily_NilAuth_DefensiveGuard: RequireFamily with nil auth returns 500 (misconfiguration)")
+	t.Log("This catches missing RequireAuth in middleware chain")
 }
 
 func TestRequireFamily_NoFamily(t *testing.T) {

@@ -14,12 +14,12 @@ func RequireAuth(e *core.RequestEvent) error {
 	return e.Next()
 }
 
-// RequireFamily is a middleware that requires authentication and family membership.
-// It injects the family_id into the request context for downstream handlers.
+// RequireFamily checks family membership and injects family_id into the request context.
+// MUST be chained after RequireAuth middleware.
 func RequireFamily(repo repository.FamilyMemberRepository) func(*core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Auth == nil {
-			return e.UnauthorizedError("Authentication required", nil)
+			return e.InternalServerError("RequireFamily: authentication middleware not applied", nil)
 		}
 
 		membership, err := repo.GetByUserID(e.Auth.Id)
