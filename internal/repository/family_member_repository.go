@@ -10,6 +10,7 @@ import (
 
 type FamilyMemberRepository interface {
 	GetByUserID(userID string) (*domain.FamilyMemberDTO, error)
+	GetFamilyName(familyID string) (string, error)
 }
 
 type familyMemberRepo struct {
@@ -51,4 +52,12 @@ func (r *familyMemberRepo) recordToDTO(record *core.Record) *domain.FamilyMember
 		CreatedAt: proxy.Created().Time(),
 		UpdatedAt: proxy.Updated().Time(),
 	}
+}
+
+func (r *familyMemberRepo) GetFamilyName(familyID string) (string, error) {
+	record, err := r.app.FindRecordById("families", familyID)
+	if err != nil {
+		return "", err
+	}
+	return record.GetString("name"), nil
 }
