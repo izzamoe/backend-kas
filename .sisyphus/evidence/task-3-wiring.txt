@@ -1,9 +1,0 @@
-Verified source wiring:
-
-internal/handler/report_handler.go:
-- requireAuth field present in ReportHandler
-- NewReportHandler accepts requireAuth then requireFamily
-- both report routes chain .Bind(h.requireAuth).Bind(h.requireFamily)
-
-main.go:
-- NewReportHandler called with middleware.RequireAuth, requireFamily

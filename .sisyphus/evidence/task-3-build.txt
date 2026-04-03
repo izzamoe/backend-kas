@@ -1,7 +1,0 @@
-Verification results:
-
-go build ./... -> PASS
-
-go test ./... -v -> PASS
-- kas/internal/middleware tests passed
-- no failing packages
