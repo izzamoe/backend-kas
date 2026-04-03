@@ -1,0 +1,14 @@
+## 2026-04-03
+- Added `internal/domain/family_member.go` as a plain DTO matching the `TransactionDTO` style: package `domain`, only `time` import, snake_case JSON tags, and `time.Time` timestamps.
+- Confirmed the `FamilyMembers` proxy exposes `family_id`, `user_id`, `role`, `created`, and `updated`, so the DTO stays minimal and aligned with schema fields.
+- Verification passed with `go build ./internal/domain/...` exit code 0 and no LSP diagnostics on the new file.
+- Added `internal/middleware/context.go` with a typed `contextKey` and a single `familyID` key to avoid collisions.
+- Verified the helper package with `go build ./internal/middleware/...` exit code 0 and no LSP diagnostics on `context.go` or `auth.go`.
+- Added `internal/repository/family_member_repository.go` using the same interface → unexported struct → constructor pattern as `transaction_repository.go`, with `FindRecordsByFilter` returning `nil, nil` when no membership exists.
+- Confirmed the repository maps relation IDs with `record.GetString("user_id")` and `record.GetString("family_id")` while still using `generated.WrapRecord[generated.FamilyMembers]` for timestamp-safe access.
+- Implemented `RequireFamily(repo repository.FamilyMemberRepository) func(*core.RequestEvent) error` middleware factory in `internal/middleware/auth.go` following TDD GREEN phase.
+- Middleware checks `e.Auth == nil` for 401 Unauthorized, calls `repo.GetByUserID(e.Auth.Id)`, returns 403 Forbidden with message "User is not a member of any family" if membership is nil, and injects family_id to context using `SetFamilyIDToContext(e.Request.Context(), membership.FamilyID)`.
+- Deprecated old `RequireFamilyMember(familyIDParam string)` function with Go-standard `// Deprecated:` comment directing users to `RequireFamily`.
+- PocketBase's `core.RequestEvent` has unexported fields and cannot be directly instantiated in unit tests - integration tests with actual PocketBase server required for full middleware testing.
+- Unit tests verify middleware dependencies (mock repository behavior, context helpers) separately - all 4 tests pass with `go test ./internal/middleware/... -v`.
+- Verification completed: `go build ./internal/middleware/...` exit code 0, LSP diagnostics clean (0 errors in 3 files).
