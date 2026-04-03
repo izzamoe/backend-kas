@@ -1,0 +1,54 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+kas
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# PocketBase data directory
+pb_data/
+pb_data_backup/
+
+# PocketBase public directory (uncomment if you don't want to commit static files)
+# pb_public/
+
+# PocketBase migrations (uncomment if generated automatically)
+# pb_migrations/
+
+# Generated code (regenerate with: make generate)
+generated/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+
+# AI planning artifacts
+.sisyphus/
+
+# Local AI tooling config
+opencode.jsonc
