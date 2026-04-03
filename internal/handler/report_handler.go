@@ -14,13 +14,15 @@ import (
 // ReportHandler handles HTTP requests for reports
 type ReportHandler struct {
 	reportService service.ReportService
+	requireAuth   *hook.Handler[*core.RequestEvent]
 	requireFamily *hook.Handler[*core.RequestEvent]
 }
 
 // NewReportHandler creates a new report handler
-func NewReportHandler(reportService service.ReportService, requireFamily func(*core.RequestEvent) error) *ReportHandler {
+func NewReportHandler(reportService service.ReportService, requireAuth func(*core.RequestEvent) error, requireFamily func(*core.RequestEvent) error) *ReportHandler {
 	return &ReportHandler{
 		reportService: reportService,
+		requireAuth:   &hook.Handler[*core.RequestEvent]{Func: requireAuth},
 		requireFamily: &hook.Handler[*core.RequestEvent]{Func: requireFamily},
 	}
 }
@@ -28,10 +30,10 @@ func NewReportHandler(reportService service.ReportService, requireFamily func(*c
 // RegisterRoutes registers all report routes
 func (h *ReportHandler) RegisterRoutes(e *core.ServeEvent) {
 	// GET /api/reports/monthly?year=2026&month=3
-	e.Router.GET("/api/reports/monthly", h.GetMonthlyReport).Bind(h.requireFamily)
+	e.Router.GET("/api/reports/monthly", h.GetMonthlyReport).Bind(h.requireAuth).Bind(h.requireFamily)
 
 	// GET /api/reports/summary?year=2026&month=3
-	e.Router.GET("/api/reports/summary", h.GetDashboardSummary).Bind(h.requireFamily)
+	e.Router.GET("/api/reports/summary", h.GetDashboardSummary).Bind(h.requireAuth).Bind(h.requireFamily)
 }
 
 // GetMonthlyReport handles GET /api/reports/monthly
