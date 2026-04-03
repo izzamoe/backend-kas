@@ -3,6 +3,7 @@ package handler
 import (
 	"kas/internal/domain"
 	"kas/internal/middleware"
+	"kas/internal/repository"
 	"kas/internal/service"
 	"log"
 	"strconv"
@@ -14,17 +15,19 @@ import (
 
 // ReportHandler handles HTTP requests for reports
 type ReportHandler struct {
-	reportService service.ReportService
-	requireAuth   *hook.Handler[*core.RequestEvent]
-	requireFamily *hook.Handler[*core.RequestEvent]
+	reportService    service.ReportService
+	familyMemberRepo repository.FamilyMemberRepository
+	requireAuth      *hook.Handler[*core.RequestEvent]
+	requireFamily    *hook.Handler[*core.RequestEvent]
 }
 
 // NewReportHandler creates a new report handler
-func NewReportHandler(reportService service.ReportService, requireAuth func(*core.RequestEvent) error, requireFamily func(*core.RequestEvent) error) *ReportHandler {
+func NewReportHandler(reportService service.ReportService, familyMemberRepo repository.FamilyMemberRepository, requireAuth func(*core.RequestEvent) error, requireFamily func(*core.RequestEvent) error) *ReportHandler {
 	return &ReportHandler{
-		reportService: reportService,
-		requireAuth:   &hook.Handler[*core.RequestEvent]{Func: requireAuth},
-		requireFamily: &hook.Handler[*core.RequestEvent]{Func: requireFamily},
+		reportService:    reportService,
+		familyMemberRepo: familyMemberRepo,
+		requireAuth:      &hook.Handler[*core.RequestEvent]{Func: requireAuth},
+		requireFamily:    &hook.Handler[*core.RequestEvent]{Func: requireFamily},
 	}
 }
 
@@ -127,6 +130,15 @@ func (h *ReportHandler) GetDashboardSummary(e *core.RequestEvent) error {
 		log.Printf("Error generating dashboard summary: %v", err)
 		return e.InternalServerError("Failed to generate summary", err)
 	}
+
+	summary.UserName = e.Auth.GetString("name")
+
+	familyName, err := h.familyMemberRepo.GetFamilyName(familyID)
+	if err != nil {
+		log.Printf("Error fetching family name: %v", err)
+		return e.InternalServerError("Failed to fetch family name", err)
+	}
+	summary.FamilyName = familyName
 
 	// Return JSON response
 	return e.JSON(200, summary)

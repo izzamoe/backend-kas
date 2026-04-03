@@ -40,7 +40,7 @@ func main() {
 
 	// Handler layer
 	transactionHandler := handler.NewTransactionHandler(transactionService)
-	reportHandler := handler.NewReportHandler(reportService, middleware.RequireAuth, requireFamily)
+	reportHandler := handler.NewReportHandler(reportService, familyMemberRepo, middleware.RequireAuth, requireFamily)
 
 	// Register routes
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
