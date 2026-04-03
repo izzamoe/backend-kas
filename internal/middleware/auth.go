@@ -37,20 +37,3 @@ func RequireFamily(repo repository.FamilyMemberRepository) func(*core.RequestEve
 		return e.Next()
 	}
 }
-
-// Deprecated: RequireFamilyMember is deprecated. Use RequireFamily instead.
-// RequireFamilyMember checks if user is a member of the family
-func RequireFamilyMember(familyIDParam string) func(*core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
-			return e.UnauthorizedError("Authentication required", nil)
-		}
-
-		_ = e.Request.PathValue(familyIDParam)
-
-		// TODO: Check if user is member of family from family_members table
-		// For now just continue
-
-		return e.Next()
-	}
-}
