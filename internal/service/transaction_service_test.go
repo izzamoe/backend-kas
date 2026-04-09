@@ -1,0 +1,462 @@
+package service
+
+import (
+	"errors"
+	"kas/internal/domain"
+	"testing"
+)
+
+// mockTransactionRepo is a mock implementation of repository.TransactionRepository.
+// Each method delegates to the corresponding Fn field if non-nil, else returns zero values.
+type mockTransactionRepo struct {
+	createFn              func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
+	getByIDFn             func(id string) (*domain.TransactionDTO, error)
+	getByFamilyIDFn       func(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
+	getByFamilyAndMonthFn func(familyID string, year, month int) ([]*domain.TransactionDTO, error)
+	updateFn              func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
+	deleteFn              func(id string) error
+	getTotalByFamilyFn    func(familyID string) (float64, error)
+	getMonthlyStatsFn     func(familyID string, year, month int) (income, expense float64, err error)
+}
+
+func (m *mockTransactionRepo) Create(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
+	if m.createFn != nil {
+		return m.createFn(req, userID)
+	}
+	return nil, nil
+}
+
+func (m *mockTransactionRepo) GetByID(id string) (*domain.TransactionDTO, error) {
+	if m.getByIDFn != nil {
+		return m.getByIDFn(id)
+	}
+	return nil, nil
+}
+
+func (m *mockTransactionRepo) GetByFamilyID(familyID string, limit, offset int) ([]*domain.TransactionDTO, error) {
+	if m.getByFamilyIDFn != nil {
+		return m.getByFamilyIDFn(familyID, limit, offset)
+	}
+	return nil, nil
+}
+
+func (m *mockTransactionRepo) GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error) {
+	if m.getByFamilyAndMonthFn != nil {
+		return m.getByFamilyAndMonthFn(familyID, year, month)
+	}
+	return nil, nil
+}
+
+func (m *mockTransactionRepo) Update(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {
+	if m.updateFn != nil {
+		return m.updateFn(id, req)
+	}
+	return nil, nil
+}
+
+func (m *mockTransactionRepo) Delete(id string) error {
+	if m.deleteFn != nil {
+		return m.deleteFn(id)
+	}
+	return nil
+}
+
+func (m *mockTransactionRepo) GetTotalByFamily(familyID string) (float64, error) {
+	if m.getTotalByFamilyFn != nil {
+		return m.getTotalByFamilyFn(familyID)
+	}
+	return 0, nil
+}
+
+func (m *mockTransactionRepo) GetMonthlyStats(familyID string, year, month int) (income, expense float64, err error) {
+	if m.getMonthlyStatsFn != nil {
+		return m.getMonthlyStatsFn(familyID, year, month)
+	}
+	return 0, 0, nil
+}
+
+// ---- CreateTransaction tests ----
+
+func TestCreateTransaction(t *testing.T) {
+	tests := []struct {
+		name       string
+		req        *domain.CreateTransactionRequest
+		userID     string
+		mockCreate func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
+		wantErr    bool
+		errMsg     string
+	}{
+		{
+			name: "amount zero returns error",
+			req: &domain.CreateTransactionRequest{
+				Amount: 0,
+				Type:   domain.TransactionTypeIncome,
+				Date:   "2026-01-01T00:00:00Z",
+			},
+			wantErr: true,
+			errMsg:  "amount must be greater than 0",
+		},
+		{
+			name: "negative amount returns error",
+			req: &domain.CreateTransactionRequest{
+				Amount: -100,
+				Type:   domain.TransactionTypeIncome,
+				Date:   "2026-01-01T00:00:00Z",
+			},
+			wantErr: true,
+			errMsg:  "amount must be greater than 0",
+		},
+		{
+			name: "invalid type returns error",
+			req: &domain.CreateTransactionRequest{
+				Amount: 100,
+				Type:   "transfer",
+				Date:   "2026-01-01T00:00:00Z",
+			},
+			wantErr: true,
+			errMsg:  "type must be either 'income' or 'expense'",
+		},
+		{
+			name: "invalid date format returns error",
+			req: &domain.CreateTransactionRequest{
+				Amount: 100,
+				Type:   domain.TransactionTypeIncome,
+				Date:   "2026-01-01",
+			},
+			wantErr: true,
+			errMsg:  "invalid date format, use ISO 8601",
+		},
+		{
+			name: "valid income request calls repo",
+			req: &domain.CreateTransactionRequest{
+				FamilyID:   "fam1",
+				CategoryID: "cat1",
+				Amount:     50000,
+				Type:       domain.TransactionTypeIncome,
+				Date:       "2026-01-01T00:00:00Z",
+				Note:       "salary",
+			},
+			userID: "user1",
+			mockCreate: func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", Amount: 50000}, nil
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid expense request calls repo",
+			req: &domain.CreateTransactionRequest{
+				FamilyID:   "fam1",
+				CategoryID: "cat1",
+				Amount:     20000,
+				Type:       domain.TransactionTypeExpense,
+				Date:       "2026-03-15T10:00:00Z",
+			},
+			userID: "user1",
+			mockCreate: func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx2", Amount: 20000}, nil
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockTransactionRepo{createFn: tt.mockCreate}
+			svc := NewTransactionService(repo)
+
+			result, err := svc.CreateTransaction(tt.req, tt.userID)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error but got nil")
+				}
+				if tt.errMsg != "" && err.Error() != tt.errMsg {
+					t.Errorf("expected error %q, got %q", tt.errMsg, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if result == nil {
+				t.Error("expected non-nil result")
+			}
+		})
+	}
+}
+
+// ---- GetFamilyTransactions (pagination) tests ----
+
+func TestGetFamilyTransactions_Pagination(t *testing.T) {
+	tests := []struct {
+		name       string
+		page       int
+		pageSize   int
+		wantLimit  int
+		wantOffset int
+	}{
+		{
+			name:       "page less than 1 normalized to 1",
+			page:       0,
+			pageSize:   10,
+			wantLimit:  10,
+			wantOffset: 0,
+		},
+		{
+			name:       "negative page normalized to 1",
+			page:       -5,
+			pageSize:   10,
+			wantLimit:  10,
+			wantOffset: 0,
+		},
+		{
+			name:       "pageSize less than 1 defaults to 20",
+			page:       1,
+			pageSize:   0,
+			wantLimit:  20,
+			wantOffset: 0,
+		},
+		{
+			name:       "pageSize greater than 100 defaults to 20",
+			page:       1,
+			pageSize:   200,
+			wantLimit:  20,
+			wantOffset: 0,
+		},
+		{
+			name:       "page=2 pageSize=10 gives offset=10",
+			page:       2,
+			pageSize:   10,
+			wantLimit:  10,
+			wantOffset: 10,
+		},
+		{
+			name:       "page=3 pageSize=5 gives offset=10",
+			page:       3,
+			pageSize:   5,
+			wantLimit:  5,
+			wantOffset: 10,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var capturedLimit, capturedOffset int
+
+			repo := &mockTransactionRepo{
+				getByFamilyIDFn: func(familyID string, limit, offset int) ([]*domain.TransactionDTO, error) {
+					capturedLimit = limit
+					capturedOffset = offset
+					return []*domain.TransactionDTO{}, nil
+				},
+			}
+			svc := NewTransactionService(repo)
+
+			_, err := svc.GetFamilyTransactions("fam1", tt.page, tt.pageSize)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if capturedLimit != tt.wantLimit {
+				t.Errorf("expected limit %d, got %d", tt.wantLimit, capturedLimit)
+			}
+			if capturedOffset != tt.wantOffset {
+				t.Errorf("expected offset %d, got %d", tt.wantOffset, capturedOffset)
+			}
+		})
+	}
+}
+
+// ---- UpdateTransaction tests ----
+
+func TestUpdateTransaction(t *testing.T) {
+	tests := []struct {
+		name        string
+		txID        string
+		userID      string
+		req         *domain.UpdateTransactionRequest
+		mockGetByID func(id string) (*domain.TransactionDTO, error)
+		mockUpdate  func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
+		wantErr     bool
+		errMsg      string
+	}{
+		{
+			name:   "GetByID error propagates",
+			txID:   "tx99",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{},
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return nil, errors.New("not found")
+			},
+			wantErr: true,
+			errMsg:  "not found",
+		},
+		{
+			name:   "different owner returns unauthorized",
+			txID:   "tx1",
+			userID: "user2",
+			req:    &domain.UpdateTransactionRequest{},
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", CreatedBy: "user1"}, nil
+			},
+			wantErr: true,
+			errMsg:  "unauthorized: you can only update your own transactions",
+		},
+		{
+			// NOTE: Line 88 in transaction_service.go contains dead code:
+			// "if req.Amount > 0 && req.Amount <= 0" — this condition is always false
+			// and can never be true. The amount validation after ownership check is unreachable.
+			name:   "owner can update - dead code at line 88 never executes",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{Note: "updated"},
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", CreatedBy: "user1"}, nil
+			},
+			mockUpdate: func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", Note: "updated"}, nil
+			},
+			wantErr: false,
+		},
+		{
+			name:   "invalid type returns error",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{Type: "transfer"},
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", CreatedBy: "user1"}, nil
+			},
+			wantErr: true,
+			errMsg:  "type must be either 'income' or 'expense'",
+		},
+		{
+			name:   "valid type income passes",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{Type: domain.TransactionTypeIncome},
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", CreatedBy: "user1"}, nil
+			},
+			mockUpdate: func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1"}, nil
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockTransactionRepo{
+				getByIDFn: tt.mockGetByID,
+				updateFn:  tt.mockUpdate,
+			}
+			svc := NewTransactionService(repo)
+
+			result, err := svc.UpdateTransaction(tt.txID, tt.userID, tt.req)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error but got nil")
+				}
+				if tt.errMsg != "" && err.Error() != tt.errMsg {
+					t.Errorf("expected error %q, got %q", tt.errMsg, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if result == nil {
+				t.Error("expected non-nil result")
+			}
+		})
+	}
+}
+
+// ---- DeleteTransaction tests ----
+
+func TestDeleteTransaction(t *testing.T) {
+	tests := []struct {
+		name        string
+		txID        string
+		userID      string
+		mockGetByID func(id string) (*domain.TransactionDTO, error)
+		mockDelete  func(id string) error
+		wantErr     bool
+		errMsg      string
+	}{
+		{
+			name:   "GetByID error propagates",
+			txID:   "tx99",
+			userID: "user1",
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return nil, errors.New("not found")
+			},
+			wantErr: true,
+			errMsg:  "not found",
+		},
+		{
+			name:   "different owner returns unauthorized",
+			txID:   "tx1",
+			userID: "user2",
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", CreatedBy: "user1"}, nil
+			},
+			wantErr: true,
+			errMsg:  "unauthorized: you can only delete your own transactions",
+		},
+		{
+			name:   "owner can delete",
+			txID:   "tx1",
+			userID: "user1",
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", CreatedBy: "user1"}, nil
+			},
+			mockDelete: func(id string) error {
+				return nil
+			},
+			wantErr: false,
+		},
+		{
+			name:   "repo delete error propagates",
+			txID:   "tx1",
+			userID: "user1",
+			mockGetByID: func(id string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx1", CreatedBy: "user1"}, nil
+			},
+			mockDelete: func(id string) error {
+				return errors.New("delete failed")
+			},
+			wantErr: true,
+			errMsg:  "delete failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockTransactionRepo{
+				getByIDFn: tt.mockGetByID,
+				deleteFn:  tt.mockDelete,
+			}
+			svc := NewTransactionService(repo)
+
+			err := svc.DeleteTransaction(tt.txID, tt.userID)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error but got nil")
+				}
+				if tt.errMsg != "" && err.Error() != tt.errMsg {
+					t.Errorf("expected error %q, got %q", tt.errMsg, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
