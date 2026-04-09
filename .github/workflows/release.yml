@@ -23,6 +23,8 @@ jobs:
   release:
     needs: ci-checks
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
