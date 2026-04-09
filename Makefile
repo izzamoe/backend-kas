@@ -14,7 +14,7 @@ install: ## Install dependencies
 	go mod tidy
 
 build: ## Build the application
-	go build -o $(APP_NAME) .
+	go build -trimpath -ldflags="-s -w" -o $(APP_NAME) .
 
 run: build ## Build and run the application
 	./$(APP_NAME) serve
