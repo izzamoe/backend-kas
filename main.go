@@ -46,10 +46,11 @@ func main() {
 	// Repository layer
 	transactionRepo := repository.NewTransactionRepository(app)
 	familyMemberRepo := repository.NewFamilyMemberRepository(app)
+	categoryRepo := repository.NewCategoryRepository(app)
 	requireFamily := middleware.RequireFamily(familyMemberRepo)
 
 	// Service layer
-	transactionService := service.NewTransactionService(transactionRepo)
+	transactionService := service.NewTransactionService(transactionRepo, familyMemberRepo, categoryRepo)
 	reportService := service.NewReportService(transactionRepo)
 
 	// Handler layer

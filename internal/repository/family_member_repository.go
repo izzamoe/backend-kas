@@ -8,7 +8,6 @@ import (
 	"kas/internal/domain"
 
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -18,10 +17,10 @@ type FamilyMemberRepository interface {
 }
 
 type familyMemberRepo struct {
-	app *pocketbase.PocketBase
+	app core.App
 }
 
-func NewFamilyMemberRepository(app *pocketbase.PocketBase) FamilyMemberRepository {
+func NewFamilyMemberRepository(app core.App) FamilyMemberRepository {
 	return &familyMemberRepo{app: app}
 }
 

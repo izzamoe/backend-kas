@@ -5,7 +5,6 @@ import (
 	"kas/generated"
 	"kas/internal/domain"
 
-	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -59,11 +58,11 @@ type TransactionRepository interface {
 
 // transactionRepo adalah implementasi concrete
 type transactionRepo struct {
-	app *pocketbase.PocketBase
+	app core.App
 }
 
 // NewTransactionRepository creates new transaction repository
-func NewTransactionRepository(app *pocketbase.PocketBase) TransactionRepository {
+func NewTransactionRepository(app core.App) TransactionRepository {
 	return &transactionRepo{
 		app: app,
 	}
