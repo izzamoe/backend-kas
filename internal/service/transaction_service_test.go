@@ -3,21 +3,23 @@ package service
 import (
 	"errors"
 	"kas/internal/domain"
+	"kas/internal/repository"
 	"testing"
 )
 
 // mockTransactionRepo is a mock implementation of repository.TransactionRepository.
 // Each method delegates to the corresponding Fn field if non-nil, else returns zero values.
 type mockTransactionRepo struct {
-	createFn              func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
-	getByIDFn             func(id string) (*domain.TransactionDTO, error)
-	getCreatorIDFn        func(id string) (string, error)
-	getByFamilyIDFn       func(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
-	getByFamilyAndMonthFn func(familyID string, year, month int) ([]*domain.TransactionDTO, error)
-	updateFn              func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
-	deleteFn              func(id string) error
-	getTotalByFamilyFn    func(familyID string) (float64, error)
-	getMonthlyStatsFn     func(familyID string, year, month int) (income, expense float64, err error)
+	createFn               func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
+	getByIDFn              func(id string) (*domain.TransactionDTO, error)
+	getCreatorIDFn         func(id string) (string, error)
+	getByFamilyIDFn        func(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
+	getByFamilyAndMonthFn  func(familyID string, year, month int) ([]*domain.TransactionDTO, error)
+	updateFn               func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
+	deleteFn               func(id string) error
+	getTotalByFamilyFn     func(familyID string) (float64, error)
+	getMonthlyStatsFn      func(familyID string, year, month int) (income, expense float64, err error)
+	getMonthlyReportDataFn func(familyID string, year, month int) (*repository.MonthlyReportData, error)
 }
 
 func (m *mockTransactionRepo) Create(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
@@ -81,6 +83,13 @@ func (m *mockTransactionRepo) GetMonthlyStats(familyID string, year, month int) 
 		return m.getMonthlyStatsFn(familyID, year, month)
 	}
 	return 0, 0, nil
+}
+
+func (m *mockTransactionRepo) GetMonthlyReportData(familyID string, year, month int) (*repository.MonthlyReportData, error) {
+	if m.getMonthlyReportDataFn != nil {
+		return m.getMonthlyReportDataFn(familyID, year, month)
+	}
+	return &repository.MonthlyReportData{Categories: []repository.CategoryBreakdownData{}}, nil
 }
 
 // ---- CreateTransaction tests ----

@@ -9,6 +9,36 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
+// dateRange returns start and end date strings for a given year/month
+func dateRange(year, month int) (startDate, endDate string) {
+	startDate = fmt.Sprintf("%04d-%02d-01", year, month)
+	nextMonth := month + 1
+	nextYear := year
+	if nextMonth > 12 {
+		nextMonth = 1
+		nextYear++
+	}
+	endDate = fmt.Sprintf("%04d-%02d-01", nextYear, nextMonth)
+	return
+}
+
+// MonthlyReportData holds pre-aggregated monthly report data from SQL
+type MonthlyReportData struct {
+	TotalIncome  float64
+	TotalExpense float64
+	Categories   []CategoryBreakdownData
+}
+
+// CategoryBreakdownData holds per-category aggregation from SQL
+type CategoryBreakdownData struct {
+	CategoryID   string
+	CategoryName string
+	Icon         string
+	Color        string
+	TotalAmount  float64
+	Count        int
+}
+
 // TransactionRepository interface - abstraction layer
 type TransactionRepository interface {
 	Create(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
@@ -20,6 +50,7 @@ type TransactionRepository interface {
 	Delete(id string) error
 	GetTotalByFamily(familyID string) (float64, error)
 	GetMonthlyStats(familyID string, year, month int) (income, expense float64, err error)
+	GetMonthlyReportData(familyID string, year, month int) (*MonthlyReportData, error)
 }
 
 // transactionRepo adalah implementasi concrete
@@ -104,22 +135,9 @@ func (r *transactionRepo) GetByFamilyID(familyID string, limit, offset int) ([]*
 	return dtos, nil
 }
 
-// GetByFamilyAndMonth gets all transactions for a specific month (OPTIMIZED)
 func (r *transactionRepo) GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error) {
-	// Create date range: YYYY-MM-01 to YYYY-MM-31
-	startDate := fmt.Sprintf("%04d-%02d-01", year, month)
+	startDate, endDate := dateRange(year, month)
 
-	// Calculate next month for upper bound
-	nextMonth := month + 1
-	nextYear := year
-	if nextMonth > 12 {
-		nextMonth = 1
-		nextYear++
-	}
-	endDate := fmt.Sprintf("%04d-%02d-01", nextYear, nextMonth)
-
-	// Use PocketBase filter with date comparison
-	// date >= "2026-03-01" AND date < "2026-04-01"
 	records, err := r.app.FindRecordsByFilter(
 		"transactions",
 		"family_id = {:familyID} && date >= {:startDate} && date < {:endDate}",
@@ -221,21 +239,9 @@ func (r *transactionRepo) GetTotalByFamily(familyID string) (float64, error) {
 	return balance, nil
 }
 
-// GetMonthlyStats calculates monthly income and expense (OPTIMIZED - using SQL aggregation)
 func (r *transactionRepo) GetMonthlyStats(familyID string, year, month int) (income, expense float64, err error) {
-	// Create date range: YYYY-MM-01 to YYYY-MM-31
-	startDate := fmt.Sprintf("%04d-%02d-01", year, month)
+	startDate, endDate := dateRange(year, month)
 
-	// Calculate next month for upper bound
-	nextMonth := month + 1
-	nextYear := year
-	if nextMonth > 12 {
-		nextMonth = 1
-		nextYear++
-	}
-	endDate := fmt.Sprintf("%04d-%02d-01", nextYear, nextMonth)
-
-	// Single query with conditional aggregation
 	query := `
 		SELECT 
 			COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_income,
@@ -255,8 +261,82 @@ func (r *transactionRepo) GetMonthlyStats(familyID string, year, month int) (inc
 	return income, expense, err
 }
 
-// recordToDTO converts Record to DTO using generated proxy
-// Ini contoh penggunaan generated type-safe proxy!
+func (r *transactionRepo) GetMonthlyReportData(familyID string, year, month int) (*MonthlyReportData, error) {
+	startDate, endDate := dateRange(year, month)
+
+	var totalIncome, totalExpense float64
+	totalsQuery := `
+		SELECT
+			COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0)
+		FROM transactions
+		WHERE family_id = {:familyID}
+		AND date >= {:startDate}
+		AND date < {:endDate}
+	`
+	err := r.app.DB().NewQuery(totalsQuery).Bind(map[string]any{
+		"familyID":  familyID,
+		"startDate": startDate,
+		"endDate":   endDate,
+	}).Row(&totalIncome, &totalExpense)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get monthly totals: %w", err)
+	}
+
+	type categoryRow struct {
+		CategoryID   string  `db:"category_id"`
+		CategoryName string  `db:"name"`
+		Icon         string  `db:"icon"`
+		Color        string  `db:"color"`
+		TotalAmount  float64 `db:"total_amount"`
+		Count        int     `db:"count"`
+	}
+
+	var categories []categoryRow
+	breakdownQuery := `
+		SELECT
+			t.category_id,
+			c.name,
+			c.icon,
+			c.color,
+			SUM(t.amount) as total_amount,
+			COUNT(*) as count
+		FROM transactions t
+		JOIN categories c ON t.category_id = c.id
+		WHERE t.family_id = {:familyID}
+		AND t.type = 'expense'
+		AND t.date >= {:startDate}
+		AND t.date < {:endDate}
+		GROUP BY t.category_id, c.name, c.icon, c.color
+	`
+	err = r.app.DB().NewQuery(breakdownQuery).Bind(map[string]any{
+		"familyID":  familyID,
+		"startDate": startDate,
+		"endDate":   endDate,
+	}).All(&categories)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get category breakdown: %w", err)
+	}
+
+	result := &MonthlyReportData{
+		TotalIncome:  totalIncome,
+		TotalExpense: totalExpense,
+		Categories:   make([]CategoryBreakdownData, len(categories)),
+	}
+	for i, c := range categories {
+		result.Categories[i] = CategoryBreakdownData{
+			CategoryID:   c.CategoryID,
+			CategoryName: c.CategoryName,
+			Icon:         c.Icon,
+			Color:        c.Color,
+			TotalAmount:  c.TotalAmount,
+			Count:        c.Count,
+		}
+	}
+
+	return result, nil
+}
+
 func (r *transactionRepo) recordToDTO(record *core.Record) (*domain.TransactionDTO, error) {
 	// Gunakan generated proxy untuk type-safe access
 	proxy, err := generated.WrapRecord[generated.Transactions](record)

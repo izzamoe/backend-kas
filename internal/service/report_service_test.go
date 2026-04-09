@@ -2,29 +2,30 @@ package service
 
 import (
 	"kas/internal/domain"
+	"kas/internal/repository"
 	"testing"
 )
 
 // ---- GetMonthlyReport tests ----
 
 func TestGetMonthlyReport(t *testing.T) {
-	cat1 := &domain.CategoryExpand{ID: "cat1", Name: "Food", Icon: "🍔", Color: "#FF0000"}
-	cat2 := &domain.CategoryExpand{ID: "cat2", Name: "Transport", Icon: "🚗", Color: "#0000FF"}
-
 	tests := []struct {
-		name         string
-		transactions []*domain.TransactionDTO
-		wantIncome   float64
-		wantExpense  float64
-		wantBalance  float64
-		wantBreakLen int
-		// map of categoryID → expected total in breakdown
+		name             string
+		reportData       *repository.MonthlyReportData
+		wantIncome       float64
+		wantExpense      float64
+		wantBalance      float64
+		wantBreakLen     int
 		wantBreakAmounts map[string]float64
 		wantBreakCounts  map[string]int
 	}{
 		{
-			name:         "empty list returns all zeros and empty breakdown",
-			transactions: []*domain.TransactionDTO{},
+			name: "empty list returns all zeros and empty breakdown",
+			reportData: &repository.MonthlyReportData{
+				TotalIncome:  0,
+				TotalExpense: 0,
+				Categories:   []repository.CategoryBreakdownData{},
+			},
 			wantIncome:   0,
 			wantExpense:  0,
 			wantBalance:  0,
@@ -32,11 +33,13 @@ func TestGetMonthlyReport(t *testing.T) {
 		},
 		{
 			name: "mixed income and expense correct totals",
-			transactions: []*domain.TransactionDTO{
-				{Type: domain.TransactionTypeIncome, Amount: 100000},
-				{Type: domain.TransactionTypeExpense, Amount: 30000, Category: cat1},
-				{Type: domain.TransactionTypeIncome, Amount: 50000},
-				{Type: domain.TransactionTypeExpense, Amount: 20000, Category: cat2},
+			reportData: &repository.MonthlyReportData{
+				TotalIncome:  150000,
+				TotalExpense: 50000,
+				Categories: []repository.CategoryBreakdownData{
+					{CategoryID: "cat1", CategoryName: "Food", Icon: "🍔", Color: "#FF0000", TotalAmount: 30000, Count: 1},
+					{CategoryID: "cat2", CategoryName: "Transport", Icon: "🚗", Color: "#0000FF", TotalAmount: 20000, Count: 1},
+				},
 			},
 			wantIncome:   150000,
 			wantExpense:  50000,
@@ -45,10 +48,12 @@ func TestGetMonthlyReport(t *testing.T) {
 		},
 		{
 			name: "multiple expenses same category grouped correctly",
-			transactions: []*domain.TransactionDTO{
-				{Type: domain.TransactionTypeExpense, Amount: 10000, Category: cat1},
-				{Type: domain.TransactionTypeExpense, Amount: 20000, Category: cat1},
-				{Type: domain.TransactionTypeExpense, Amount: 5000, Category: cat1},
+			reportData: &repository.MonthlyReportData{
+				TotalIncome:  0,
+				TotalExpense: 35000,
+				Categories: []repository.CategoryBreakdownData{
+					{CategoryID: "cat1", CategoryName: "Food", Icon: "🍔", Color: "#FF0000", TotalAmount: 35000, Count: 3},
+				},
 			},
 			wantIncome:   0,
 			wantExpense:  35000,
@@ -63,28 +68,23 @@ func TestGetMonthlyReport(t *testing.T) {
 		},
 		{
 			name: "expense with nil category not included in breakdown",
-			transactions: []*domain.TransactionDTO{
-				{Type: domain.TransactionTypeExpense, Amount: 10000, Category: nil},
-				{Type: domain.TransactionTypeExpense, Amount: 20000, Category: cat1},
+			reportData: &repository.MonthlyReportData{
+				TotalIncome:  0,
+				TotalExpense: 30000,
+				Categories:   []repository.CategoryBreakdownData{},
 			},
 			wantIncome:   0,
 			wantExpense:  30000,
 			wantBalance:  -30000,
-			wantBreakLen: 1, // only cat1 appears; nil-category tx is excluded from breakdown
-			wantBreakAmounts: map[string]float64{
-				"cat1": 20000,
-			},
-			wantBreakCounts: map[string]int{
-				"cat1": 1,
-			},
+			wantBreakLen: 0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockTransactionRepo{
-				getByFamilyAndMonthFn: func(familyID string, year, month int) ([]*domain.TransactionDTO, error) {
-					return tt.transactions, nil
+				getMonthlyReportDataFn: func(familyID string, year, month int) (*repository.MonthlyReportData, error) {
+					return tt.reportData, nil
 				},
 			}
 			svc := NewReportService(repo)
@@ -108,9 +108,7 @@ func TestGetMonthlyReport(t *testing.T) {
 				t.Errorf("CategoryBreakdown length: expected %d, got %d", tt.wantBreakLen, len(report.CategoryBreakdown))
 			}
 
-			// Verify breakdown amounts and counts if specified
 			if tt.wantBreakAmounts != nil {
-				// Build a map from breakdown slice for easy lookup
 				breakMap := make(map[string]domain.CategoryBreakdownDTO)
 				for _, b := range report.CategoryBreakdown {
 					breakMap[b.CategoryID] = b
@@ -198,17 +196,17 @@ func TestCalculatePercentageChange(t *testing.T) {
 
 func TestGetDashboardSummary(t *testing.T) {
 	tests := []struct {
-		name                 string
-		totalBalance         float64
-		currentIncome        float64
-		currentExpense       float64
-		prevIncome           float64
-		prevExpense          float64
-		wantTotalBalance     float64
-		wantMonthlyIncome    float64
-		wantMonthlyExpense   float64
-		wantIncomeChange     float64
-		wantExpenseChange    float64
+		name               string
+		totalBalance       float64
+		currentIncome      float64
+		currentExpense     float64
+		prevIncome         float64
+		prevExpense        float64
+		wantTotalBalance   float64
+		wantMonthlyIncome  float64
+		wantMonthlyExpense float64
+		wantIncomeChange   float64
+		wantExpenseChange  float64
 	}{
 		{
 			name:               "zero prev month gives 100% change when current non-zero",

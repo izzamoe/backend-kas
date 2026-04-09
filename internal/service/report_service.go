@@ -25,66 +25,32 @@ func NewReportService(transactionRepo repository.TransactionRepository) ReportSe
 
 // GetMonthlyReport generates a monthly financial report
 func (s *reportService) GetMonthlyReport(req *domain.MonthlyReportRequest) (*domain.MonthlyReportDTO, error) {
-	// Get all transactions for the month
-	transactions, err := s.transactionRepo.GetByFamilyAndMonth(req.FamilyID, req.Year, req.Month)
+	data, err := s.transactionRepo.GetMonthlyReportData(req.FamilyID, req.Year, req.Month)
 	if err != nil {
 		return nil, err
 	}
 
-	// Initialize report
-	report := &domain.MonthlyReportDTO{
-		FamilyID:          req.FamilyID,
-		Year:              req.Year,
-		Month:             req.Month,
-		TotalIncome:       0,
-		TotalExpense:      0,
-		Balance:           0,
-		CategoryBreakdown: []domain.CategoryBreakdownDTO{},
-	}
-
-	// Map for grouping by category (key: category_id)
-	categoryMap := make(map[string]*domain.CategoryBreakdownDTO)
-
-	// Process each transaction
-	for _, tx := range transactions {
-		if tx.Type == domain.TransactionTypeIncome {
-			// Add to total income
-			report.TotalIncome += tx.Amount
-		} else {
-			// Add to total expense
-			report.TotalExpense += tx.Amount
-
-			// Group by category for expense breakdown
-			if tx.Category != nil {
-				categoryID := tx.Category.ID
-				if breakdown, exists := categoryMap[categoryID]; exists {
-					// Category already exists, update totals
-					breakdown.TotalAmount += tx.Amount
-					breakdown.Count++
-				} else {
-					// New category, create entry
-					categoryMap[categoryID] = &domain.CategoryBreakdownDTO{
-						CategoryID:   categoryID,
-						CategoryName: tx.Category.Name,
-						Icon:         tx.Category.Icon,
-						Color:        tx.Category.Color,
-						TotalAmount:  tx.Amount,
-						Count:        1,
-					}
-				}
-			}
+	breakdown := make([]domain.CategoryBreakdownDTO, len(data.Categories))
+	for i, c := range data.Categories {
+		breakdown[i] = domain.CategoryBreakdownDTO{
+			CategoryID:   c.CategoryID,
+			CategoryName: c.CategoryName,
+			Icon:         c.Icon,
+			Color:        c.Color,
+			TotalAmount:  c.TotalAmount,
+			Count:        c.Count,
 		}
 	}
 
-	// Calculate balance
-	report.Balance = report.TotalIncome - report.TotalExpense
-
-	// Convert map to slice
-	for _, breakdown := range categoryMap {
-		report.CategoryBreakdown = append(report.CategoryBreakdown, *breakdown)
-	}
-
-	return report, nil
+	return &domain.MonthlyReportDTO{
+		FamilyID:          req.FamilyID,
+		Year:              req.Year,
+		Month:             req.Month,
+		TotalIncome:       data.TotalIncome,
+		TotalExpense:      data.TotalExpense,
+		Balance:           data.TotalIncome - data.TotalExpense,
+		CategoryBreakdown: breakdown,
+	}, nil
 }
 
 // GetDashboardSummary generates dashboard summary with total balance and monthly stats (OPTIMIZED)
