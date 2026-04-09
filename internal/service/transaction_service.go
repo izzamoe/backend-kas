@@ -72,15 +72,12 @@ func (s *transactionService) GetFamilyTransactions(familyID string, page, pageSi
 
 // UpdateTransaction with authorization
 func (s *transactionService) UpdateTransaction(id, userID string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {
-	// Get existing transaction
-	existing, err := s.transactionRepo.GetByID(id)
+	creatorID, err := s.transactionRepo.GetCreatorID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Check if user has permission to update
-	// For now just check if user is the creator
-	if existing.CreatedBy != userID {
+	if creatorID != userID {
 		return nil, errors.New("unauthorized: you can only update your own transactions")
 	}
 
@@ -99,13 +96,12 @@ func (s *transactionService) UpdateTransaction(id, userID string, req *domain.Up
 
 // DeleteTransaction with authorization
 func (s *transactionService) DeleteTransaction(id, userID string) error {
-	existing, err := s.transactionRepo.GetByID(id)
+	creatorID, err := s.transactionRepo.GetCreatorID(id)
 	if err != nil {
 		return err
 	}
 
-	// Authorization check
-	if existing.CreatedBy != userID {
+	if creatorID != userID {
 		return errors.New("unauthorized: you can only delete your own transactions")
 	}
 

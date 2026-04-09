@@ -13,6 +13,7 @@ import (
 type TransactionRepository interface {
 	Create(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
 	GetByID(id string) (*domain.TransactionDTO, error)
+	GetCreatorID(id string) (string, error)
 	GetByFamilyID(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
 	GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error)
 	Update(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
@@ -189,6 +190,15 @@ func (r *transactionRepo) Delete(id string) error {
 	}
 
 	return r.app.Delete(record)
+}
+
+// GetCreatorID returns just the creator's user ID for a transaction (lightweight, no expand)
+func (r *transactionRepo) GetCreatorID(id string) (string, error) {
+	record, err := r.app.FindRecordById("transactions", id)
+	if err != nil {
+		return "", err
+	}
+	return record.GetString("created_by"), nil
 }
 
 // GetTotalByFamily calculates total for a family using single CASE WHEN query
