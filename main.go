@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
@@ -19,7 +20,20 @@ import (
 )
 
 func main() {
-	app := pocketbase.New()
+	app := pocketbase.NewWithConfig(pocketbase.Config{
+		DBConnect: func(dbPath string) (*dbx.DB, error) {
+			// PocketBase defaults + mmap_size for memory-mapped reads
+			pragmas := "?_pragma=busy_timeout(10000)" +
+				"&_pragma=journal_mode(WAL)" +
+				"&_pragma=journal_size_limit(200000000)" +
+				"&_pragma=synchronous(NORMAL)" +
+				"&_pragma=foreign_keys(ON)" +
+				"&_pragma=temp_store(MEMORY)" +
+				"&_pragma=cache_size(-32000)" +
+				"&_pragma=mmap_size(268435456)" // 256MB memory-mapped I/O
+			return dbx.Open("sqlite", dbPath+pragmas)
+		},
+	})
 
 	// Register migrate command with auto-migration enabled during development
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
