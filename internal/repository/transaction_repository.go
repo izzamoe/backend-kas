@@ -9,6 +9,9 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
+// defaultExpandFields is shared across all methods to avoid repeated allocation
+var defaultExpandFields = []string{"category_id", "created_by", "family_id"}
+
 // dateRange returns start and end date strings for a given year/month
 func dateRange(year, month int) (startDate, endDate string) {
 	startDate = fmt.Sprintf("%04d-%02d-01", year, month)
@@ -67,7 +70,7 @@ func NewTransactionRepository(app *pocketbase.PocketBase) TransactionRepository 
 
 // Create transaction - menggunakan generated proxy
 func (r *transactionRepo) Create(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
-	collection, err := r.app.FindCollectionByNameOrId("transactions")
+	collection, err := r.app.FindCachedCollectionByNameOrId("transactions")
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +102,7 @@ func (r *transactionRepo) GetByID(id string) (*domain.TransactionDTO, error) {
 	}
 
 	// Expand relations manually
-	expandFields := []string{"category_id", "created_by", "family_id"}
-	r.app.ExpandRecord(record, expandFields, nil)
+	r.app.ExpandRecord(record, defaultExpandFields, nil)
 
 	return r.recordToDTO(record)
 }
@@ -120,8 +122,7 @@ func (r *transactionRepo) GetByFamilyID(familyID string, limit, offset int) ([]*
 	}
 
 	// Expand relations for all records
-	expandFields := []string{"category_id", "created_by", "family_id"}
-	r.app.ExpandRecords(records, expandFields, nil)
+	r.app.ExpandRecords(records, defaultExpandFields, nil)
 
 	dtos := make([]*domain.TransactionDTO, 0, len(records))
 	for _, record := range records {

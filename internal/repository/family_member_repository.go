@@ -1,10 +1,13 @@
 package repository
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"kas/generated"
 	"kas/internal/domain"
 
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -23,23 +26,19 @@ func NewFamilyMemberRepository(app *pocketbase.PocketBase) FamilyMemberRepositor
 }
 
 func (r *familyMemberRepo) GetByUserID(userID string) (*domain.FamilyMemberDTO, error) {
-	records, err := r.app.FindRecordsByFilter(
+	record, err := r.app.FindFirstRecordByFilter(
 		"family_members",
 		"user_id = {:userID}",
-		"",
-		1,
-		0,
-		map[string]any{"userID": userID},
+		dbx.Params{"userID": userID},
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
-	if len(records) == 0 {
-		return nil, nil
-	}
-
-	return r.recordToDTO(records[0])
+	return r.recordToDTO(record)
 }
 
 func (r *familyMemberRepo) recordToDTO(record *core.Record) (*domain.FamilyMemberDTO, error) {
