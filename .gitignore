@@ -23,7 +23,6 @@ pb_data_backup/
 # pb_migrations/
 
 # Generated code (regenerate with: make generate)
-generated/
 
 # Go workspace file
 go.work
