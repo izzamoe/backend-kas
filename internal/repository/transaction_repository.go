@@ -191,26 +191,24 @@ func (r *transactionRepo) Delete(id string) error {
 	return r.app.Delete(record)
 }
 
-// GetTotalByFamily calculates total for a family (OPTIMIZED - using SQL aggregation)
+// GetTotalByFamily calculates total for a family using single CASE WHEN query
 func (r *transactionRepo) GetTotalByFamily(familyID string) (float64, error) {
-	// Use raw SQL for aggregation - much faster than fetching all records
-	var totalIncome, totalExpense float64
+	var balance float64
 
-	// Query total income
-	incomeQuery := "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE family_id = {:familyID} AND type = 'income'"
-	err := r.app.DB().NewQuery(incomeQuery).Bind(map[string]any{"familyID": familyID}).Row(&totalIncome)
+	query := `
+		SELECT 
+			COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) -
+			COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0)
+		FROM transactions 
+		WHERE family_id = {:familyID}
+	`
+
+	err := r.app.DB().NewQuery(query).Bind(map[string]any{"familyID": familyID}).Row(&balance)
 	if err != nil {
 		return 0, err
 	}
 
-	// Query total expense
-	expenseQuery := "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE family_id = {:familyID} AND type = 'expense'"
-	err = r.app.DB().NewQuery(expenseQuery).Bind(map[string]any{"familyID": familyID}).Row(&totalExpense)
-	if err != nil {
-		return 0, err
-	}
-
-	return totalIncome - totalExpense, nil
+	return balance, nil
 }
 
 // GetMonthlyStats calculates monthly income and expense (OPTIMIZED - using SQL aggregation)
