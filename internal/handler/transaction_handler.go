@@ -75,14 +75,23 @@ func (h *TransactionHandler) GetByFamily(e *core.RequestEvent) error {
 	page, _ := strconv.Atoi(e.Request.URL.Query().Get("page"))
 	pageSize, _ := strconv.Atoi(e.Request.URL.Query().Get("pageSize"))
 
+	// Normalize here so response matches what was actually queried
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
 	transactions, err := h.service.GetFamilyTransactions(familyID, page, pageSize)
 	if err != nil {
 		return e.BadRequestError("Failed to get transactions", err)
 	}
 
 	return e.JSON(http.StatusOK, map[string]any{
-		"items": transactions,
-		"page":  page,
+		"items":    transactions,
+		"page":     page,
+		"pageSize": pageSize,
 	})
 }
 

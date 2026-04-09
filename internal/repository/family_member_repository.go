@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"kas/generated"
 	"kas/internal/domain"
 
@@ -38,11 +39,14 @@ func (r *familyMemberRepo) GetByUserID(userID string) (*domain.FamilyMemberDTO, 
 		return nil, nil
 	}
 
-	return r.recordToDTO(records[0]), nil
+	return r.recordToDTO(records[0])
 }
 
-func (r *familyMemberRepo) recordToDTO(record *core.Record) *domain.FamilyMemberDTO {
-	proxy, _ := generated.WrapRecord[generated.FamilyMembers](record)
+func (r *familyMemberRepo) recordToDTO(record *core.Record) (*domain.FamilyMemberDTO, error) {
+	proxy, err := generated.WrapRecord[generated.FamilyMembers](record)
+	if err != nil {
+		return nil, fmt.Errorf("failed to wrap family member record: %w", err)
+	}
 
 	return &domain.FamilyMemberDTO{
 		ID:        proxy.Id,
@@ -51,7 +55,7 @@ func (r *familyMemberRepo) recordToDTO(record *core.Record) *domain.FamilyMember
 		Role:      record.GetString("role"),
 		CreatedAt: proxy.Created().Time(),
 		UpdatedAt: proxy.Updated().Time(),
-	}
+	}, nil
 }
 
 func (r *familyMemberRepo) GetFamilyName(familyID string) (string, error) {

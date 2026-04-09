@@ -84,8 +84,8 @@ func (s *transactionService) UpdateTransaction(id, userID string, req *domain.Up
 		return nil, errors.New("unauthorized: you can only update your own transactions")
 	}
 
-	// Validate amount if provided
-	if req.Amount > 0 && req.Amount <= 0 {
+	// Validate amount if provided (0 means "not updating amount")
+	if req.Amount < 0 {
 		return nil, errors.New("amount must be greater than 0")
 	}
 

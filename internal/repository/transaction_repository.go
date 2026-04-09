@@ -56,7 +56,7 @@ func (r *transactionRepo) Create(req *domain.CreateTransactionRequest, userID st
 	}
 
 	// Convert ke DTO menggunakan generated proxy
-	return r.recordToDTO(record), nil
+	return r.recordToDTO(record)
 }
 
 // GetByID - menggunakan generated proxy untuk type-safe access
@@ -70,7 +70,7 @@ func (r *transactionRepo) GetByID(id string) (*domain.TransactionDTO, error) {
 	expandFields := []string{"category_id", "created_by", "family_id"}
 	r.app.ExpandRecord(record, expandFields, nil)
 
-	return r.recordToDTO(record), nil
+	return r.recordToDTO(record)
 }
 
 // GetByFamilyID with pagination
@@ -91,9 +91,13 @@ func (r *transactionRepo) GetByFamilyID(familyID string, limit, offset int) ([]*
 	expandFields := []string{"category_id", "created_by", "family_id"}
 	r.app.ExpandRecords(records, expandFields, nil)
 
-	dtos := make([]*domain.TransactionDTO, len(records))
-	for i, record := range records {
-		dtos[i] = r.recordToDTO(record)
+	dtos := make([]*domain.TransactionDTO, 0, len(records))
+	for _, record := range records {
+		dto, err := r.recordToDTO(record)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert record %s: %w", record.Id, err)
+		}
+		dtos = append(dtos, dto)
 	}
 
 	return dtos, nil
@@ -135,9 +139,13 @@ func (r *transactionRepo) GetByFamilyAndMonth(familyID string, year, month int) 
 	expandFields := []string{"category_id", "created_by", "family_id"}
 	r.app.ExpandRecords(records, expandFields, nil)
 
-	dtos := make([]*domain.TransactionDTO, len(records))
-	for i, record := range records {
-		dtos[i] = r.recordToDTO(record)
+	dtos := make([]*domain.TransactionDTO, 0, len(records))
+	for _, record := range records {
+		dto, err := r.recordToDTO(record)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert record %s: %w", record.Id, err)
+		}
+		dtos = append(dtos, dto)
 	}
 
 	return dtos, nil
@@ -170,7 +178,7 @@ func (r *transactionRepo) Update(id string, req *domain.UpdateTransactionRequest
 		return nil, err
 	}
 
-	return r.recordToDTO(record), nil
+	return r.recordToDTO(record)
 }
 
 // Delete transaction
@@ -241,9 +249,12 @@ func (r *transactionRepo) GetMonthlyStats(familyID string, year, month int) (inc
 
 // recordToDTO converts Record to DTO using generated proxy
 // Ini contoh penggunaan generated type-safe proxy!
-func (r *transactionRepo) recordToDTO(record *core.Record) *domain.TransactionDTO {
+func (r *transactionRepo) recordToDTO(record *core.Record) (*domain.TransactionDTO, error) {
 	// Gunakan generated proxy untuk type-safe access
-	proxy, _ := generated.WrapRecord[generated.Transactions](record)
+	proxy, err := generated.WrapRecord[generated.Transactions](record)
+	if err != nil {
+		return nil, fmt.Errorf("failed to wrap transaction record: %w", err)
+	}
 
 	// Convert enum TypeSelectType to string using proxy
 	typeStr := "income"
@@ -293,5 +304,5 @@ func (r *transactionRepo) recordToDTO(record *core.Record) *domain.TransactionDT
 		}
 	}
 
-	return dto
+	return dto, nil
 }
