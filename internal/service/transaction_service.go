@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"kas/internal/domain"
 	"kas/internal/repository"
 	"time"
@@ -18,13 +19,17 @@ type TransactionService interface {
 }
 
 type transactionService struct {
-	transactionRepo repository.TransactionRepository
+	transactionRepo  repository.TransactionRepository
+	familyMemberRepo repository.FamilyMemberRepository
+	categoryRepo     repository.CategoryRepository
 }
 
 // NewTransactionService creates new transaction service
-func NewTransactionService(transactionRepo repository.TransactionRepository) TransactionService {
+func NewTransactionService(transactionRepo repository.TransactionRepository, familyMemberRepo repository.FamilyMemberRepository, categoryRepo repository.CategoryRepository) TransactionService {
 	return &transactionService{
-		transactionRepo: transactionRepo,
+		transactionRepo:  transactionRepo,
+		familyMemberRepo: familyMemberRepo,
+		categoryRepo:     categoryRepo,
 	}
 }
 
@@ -46,8 +51,26 @@ func (s *transactionService) CreateTransaction(req *domain.CreateTransactionRequ
 		return nil, errors.New("invalid date format, use ISO 8601")
 	}
 
-	// TODO: Validate user is member of family
-	// TODO: Check if category belongs to family
+	// Validate user is member of the specified family
+	membership, err := s.familyMemberRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate family membership: %w", err)
+	}
+	if membership == nil || membership.FamilyID != req.FamilyID {
+		return nil, errors.New("user is not a member of the specified family")
+	}
+
+	// Validate category belongs to family (or is a default category)
+	category, err := s.categoryRepo.GetByID(req.CategoryID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate category: %w", err)
+	}
+	if category == nil {
+		return nil, errors.New("category not found")
+	}
+	if !category.IsDefault && category.FamilyID != req.FamilyID {
+		return nil, errors.New("category does not belong to this family")
+	}
 
 	return s.transactionRepo.Create(req, userID)
 }
@@ -89,6 +112,17 @@ func (s *transactionService) UpdateTransaction(id, userID string, req *domain.Up
 	// Validate type if provided
 	if req.Type != "" && req.Type != domain.TransactionTypeIncome && req.Type != domain.TransactionTypeExpense {
 		return nil, errors.New("type must be either 'income' or 'expense'")
+	}
+
+	// Validate category if being updated
+	if req.CategoryID != "" {
+		category, err := s.categoryRepo.GetByID(req.CategoryID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate category: %w", err)
+		}
+		if category == nil {
+			return nil, errors.New("category not found")
+		}
 	}
 
 	return s.transactionRepo.Update(id, req)
