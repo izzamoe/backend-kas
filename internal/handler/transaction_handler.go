@@ -33,11 +33,11 @@ func NewTransactionHandler(
 // RegisterRoutes registers all transaction routes
 func (h *TransactionHandler) RegisterRoutes(e *core.ServeEvent) {
 	e.Router.POST("/api/transactions", h.Create).Bind(h.requireAuth).Bind(h.requireFamily)
-	e.Router.GET("/api/transactions/:id", h.GetByID).Bind(h.requireAuth)
-	e.Router.GET("/api/families/:familyId/transactions", h.GetByFamily).Bind(h.requireAuth).Bind(h.requireFamily)
-	e.Router.PATCH("/api/transactions/:id", h.Update).Bind(h.requireAuth)
-	e.Router.DELETE("/api/transactions/:id", h.Delete).Bind(h.requireAuth)
-	e.Router.GET("/api/families/:familyId/balance", h.GetBalance).Bind(h.requireAuth).Bind(h.requireFamily)
+	e.Router.GET("/api/transactions/{id}", h.GetByID).Bind(h.requireAuth)
+	e.Router.GET("/api/families/{familyId}/transactions", h.GetByFamily).Bind(h.requireAuth).Bind(h.requireFamily)
+	e.Router.PATCH("/api/transactions/{id}", h.Update).Bind(h.requireAuth)
+	e.Router.DELETE("/api/transactions/{id}", h.Delete).Bind(h.requireAuth)
+	e.Router.GET("/api/families/{familyId}/balance", h.GetBalance).Bind(h.requireAuth).Bind(h.requireFamily)
 }
 
 // Create transaction handler
