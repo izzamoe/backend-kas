@@ -53,36 +53,15 @@ func (s *reportService) GetMonthlyReport(req *domain.MonthlyReportRequest) (*dom
 	}, nil
 }
 
-// GetDashboardSummary generates dashboard summary with total balance and monthly stats (OPTIMIZED)
+// GetDashboardSummary generates dashboard summary with total balance and monthly stats
 func (s *reportService) GetDashboardSummary(req *domain.DashboardSummaryRequest) (*domain.DashboardSummaryDTO, error) {
-	// Get total balance using optimized SQL aggregation
-	totalBalance, err := s.transactionRepo.GetTotalByFamily(req.FamilyID)
+	totalBalance, monthlyIncome, monthlyExpense, prevIncome, prevExpense, err := s.transactionRepo.GetDashboardData(req.FamilyID, req.Year, req.Month)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get current month stats using optimized SQL aggregation
-	monthlyIncome, monthlyExpense, err := s.transactionRepo.GetMonthlyStats(req.FamilyID, req.Year, req.Month)
-	if err != nil {
-		return nil, err
-	}
-
-	// Calculate previous month
-	prevYear, prevMonth := req.Year, req.Month-1
-	if prevMonth == 0 {
-		prevMonth = 12
-		prevYear--
-	}
-
-	// Get previous month stats using optimized SQL aggregation
-	prevMonthIncome, prevMonthExpense, err := s.transactionRepo.GetMonthlyStats(req.FamilyID, prevYear, prevMonth)
-	if err != nil {
-		return nil, err
-	}
-
-	// Calculate percentage changes
-	incomeChange := calculatePercentageChange(prevMonthIncome, monthlyIncome)
-	expenseChange := calculatePercentageChange(prevMonthExpense, monthlyExpense)
+	incomeChange := calculatePercentageChange(prevIncome, monthlyIncome)
+	expenseChange := calculatePercentageChange(prevExpense, monthlyExpense)
 
 	return &domain.DashboardSummaryDTO{
 		TotalBalance:         totalBalance,

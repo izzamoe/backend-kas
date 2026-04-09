@@ -54,6 +54,7 @@ type TransactionRepository interface {
 	GetTotalByFamily(familyID string) (float64, error)
 	GetMonthlyStats(familyID string, year, month int) (income, expense float64, err error)
 	GetMonthlyReportData(familyID string, year, month int) (*MonthlyReportData, error)
+	GetDashboardData(familyID string, year, month int) (totalBalance, monthlyIncome, monthlyExpense, prevIncome, prevExpense float64, err error)
 }
 
 // transactionRepo adalah implementasi concrete
@@ -336,6 +337,39 @@ func (r *transactionRepo) GetMonthlyReportData(familyID string, year, month int)
 	}
 
 	return result, nil
+}
+
+func (r *transactionRepo) GetDashboardData(familyID string, year, month int) (totalBalance, monthlyIncome, monthlyExpense, prevIncome, prevExpense float64, err error) {
+	startDate, endDate := dateRange(year, month)
+
+	prevYear, prevMon := year, month-1
+	if prevMon == 0 {
+		prevMon = 12
+		prevYear--
+	}
+	prevStartDate, prevEndDate := dateRange(prevYear, prevMon)
+
+	query := `
+		SELECT
+			COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) -
+			COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_balance,
+			COALESCE(SUM(CASE WHEN type = 'income' AND date >= {:startDate} AND date < {:endDate} THEN amount ELSE 0 END), 0) as monthly_income,
+			COALESCE(SUM(CASE WHEN type = 'expense' AND date >= {:startDate} AND date < {:endDate} THEN amount ELSE 0 END), 0) as monthly_expense,
+			COALESCE(SUM(CASE WHEN type = 'income' AND date >= {:prevStartDate} AND date < {:prevEndDate} THEN amount ELSE 0 END), 0) as prev_income,
+			COALESCE(SUM(CASE WHEN type = 'expense' AND date >= {:prevStartDate} AND date < {:prevEndDate} THEN amount ELSE 0 END), 0) as prev_expense
+		FROM transactions
+		WHERE family_id = {:familyID}
+	`
+
+	err = r.app.DB().NewQuery(query).Bind(map[string]any{
+		"familyID":      familyID,
+		"startDate":     startDate,
+		"endDate":       endDate,
+		"prevStartDate": prevStartDate,
+		"prevEndDate":   prevEndDate,
+	}).Row(&totalBalance, &monthlyIncome, &monthlyExpense, &prevIncome, &prevExpense)
+
+	return
 }
 
 func (r *transactionRepo) recordToDTO(record *core.Record) (*domain.TransactionDTO, error) {

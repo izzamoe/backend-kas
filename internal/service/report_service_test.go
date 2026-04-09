@@ -197,11 +197,7 @@ func TestCalculatePercentageChange(t *testing.T) {
 func TestGetDashboardSummary(t *testing.T) {
 	tests := []struct {
 		name               string
-		totalBalance       float64
-		currentIncome      float64
-		currentExpense     float64
-		prevIncome         float64
-		prevExpense        float64
+		getDashboardDataFn func(familyID string, year, month int) (float64, float64, float64, float64, float64, error)
 		wantTotalBalance   float64
 		wantMonthlyIncome  float64
 		wantMonthlyExpense float64
@@ -209,12 +205,10 @@ func TestGetDashboardSummary(t *testing.T) {
 		wantExpenseChange  float64
 	}{
 		{
-			name:               "zero prev month gives 100% change when current non-zero",
-			totalBalance:       500,
-			currentIncome:      100,
-			currentExpense:     50,
-			prevIncome:         0,
-			prevExpense:        0,
+			name: "zero prev month gives 100% change when current non-zero",
+			getDashboardDataFn: func(familyID string, year, month int) (float64, float64, float64, float64, float64, error) {
+				return 500, 100, 50, 0, 0, nil
+			},
 			wantTotalBalance:   500,
 			wantMonthlyIncome:  100,
 			wantMonthlyExpense: 50,
@@ -222,12 +216,10 @@ func TestGetDashboardSummary(t *testing.T) {
 			wantExpenseChange:  100,
 		},
 		{
-			name:               "income decreased by half",
-			totalBalance:       1000,
-			currentIncome:      50,
-			currentExpense:     200,
-			prevIncome:         100,
-			prevExpense:        200,
+			name: "income decreased by half",
+			getDashboardDataFn: func(familyID string, year, month int) (float64, float64, float64, float64, float64, error) {
+				return 1000, 50, 200, 100, 200, nil
+			},
 			wantTotalBalance:   1000,
 			wantMonthlyIncome:  50,
 			wantMonthlyExpense: 200,
@@ -238,20 +230,8 @@ func TestGetDashboardSummary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			callCount := 0
 			repo := &mockTransactionRepo{
-				getTotalByFamilyFn: func(familyID string) (float64, error) {
-					return tt.totalBalance, nil
-				},
-				getMonthlyStatsFn: func(familyID string, year, month int) (float64, float64, error) {
-					callCount++
-					if callCount == 1 {
-						// current month
-						return tt.currentIncome, tt.currentExpense, nil
-					}
-					// previous month
-					return tt.prevIncome, tt.prevExpense, nil
-				},
+				getDashboardDataFn: tt.getDashboardDataFn,
 			}
 			svc := NewReportService(repo)
 

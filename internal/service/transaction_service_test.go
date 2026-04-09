@@ -20,6 +20,7 @@ type mockTransactionRepo struct {
 	getTotalByFamilyFn     func(familyID string) (float64, error)
 	getMonthlyStatsFn      func(familyID string, year, month int) (income, expense float64, err error)
 	getMonthlyReportDataFn func(familyID string, year, month int) (*repository.MonthlyReportData, error)
+	getDashboardDataFn     func(familyID string, year, month int) (float64, float64, float64, float64, float64, error)
 }
 
 func (m *mockTransactionRepo) Create(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
@@ -90,6 +91,13 @@ func (m *mockTransactionRepo) GetMonthlyReportData(familyID string, year, month 
 		return m.getMonthlyReportDataFn(familyID, year, month)
 	}
 	return &repository.MonthlyReportData{Categories: []repository.CategoryBreakdownData{}}, nil
+}
+
+func (m *mockTransactionRepo) GetDashboardData(familyID string, year, month int) (float64, float64, float64, float64, float64, error) {
+	if m.getDashboardDataFn != nil {
+		return m.getDashboardDataFn(familyID, year, month)
+	}
+	return 0, 0, 0, 0, 0, nil
 }
 
 // ---- CreateTransaction tests ----
