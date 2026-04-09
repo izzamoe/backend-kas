@@ -157,8 +157,7 @@ func (r *transactionRepo) GetByFamilyAndMonth(familyID string, year, month int) 
 	}
 
 	// Expand relations for all records
-	expandFields := []string{"category_id", "created_by", "family_id"}
-	r.app.ExpandRecords(records, expandFields, nil)
+	r.app.ExpandRecords(records, defaultExpandFields, nil)
 
 	dtos := make([]*domain.TransactionDTO, 0, len(records))
 	for _, record := range records {
