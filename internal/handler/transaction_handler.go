@@ -7,29 +7,37 @@ import (
 	"strconv"
 
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
 // TransactionHandler handles HTTP requests for transactions
 type TransactionHandler struct {
-	service service.TransactionService
+	service       service.TransactionService
+	requireAuth   *hook.Handler[*core.RequestEvent]
+	requireFamily *hook.Handler[*core.RequestEvent]
 }
 
 // NewTransactionHandler creates new transaction handler
-func NewTransactionHandler(service service.TransactionService) *TransactionHandler {
+func NewTransactionHandler(
+	service service.TransactionService,
+	requireAuth func(*core.RequestEvent) error,
+	requireFamily func(*core.RequestEvent) error,
+) *TransactionHandler {
 	return &TransactionHandler{
-		service: service,
+		service:       service,
+		requireAuth:   &hook.Handler[*core.RequestEvent]{Func: requireAuth},
+		requireFamily: &hook.Handler[*core.RequestEvent]{Func: requireFamily},
 	}
 }
 
 // RegisterRoutes registers all transaction routes
 func (h *TransactionHandler) RegisterRoutes(e *core.ServeEvent) {
-	// Custom routes
-	e.Router.POST("/api/transactions", h.Create)
-	e.Router.GET("/api/transactions/:id", h.GetByID)
-	e.Router.GET("/api/families/:familyId/transactions", h.GetByFamily)
-	e.Router.PATCH("/api/transactions/:id", h.Update)
-	e.Router.DELETE("/api/transactions/:id", h.Delete)
-	e.Router.GET("/api/families/:familyId/balance", h.GetBalance)
+	e.Router.POST("/api/transactions", h.Create).Bind(h.requireAuth).Bind(h.requireFamily)
+	e.Router.GET("/api/transactions/:id", h.GetByID).Bind(h.requireAuth)
+	e.Router.GET("/api/families/:familyId/transactions", h.GetByFamily).Bind(h.requireAuth).Bind(h.requireFamily)
+	e.Router.PATCH("/api/transactions/:id", h.Update).Bind(h.requireAuth)
+	e.Router.DELETE("/api/transactions/:id", h.Delete).Bind(h.requireAuth)
+	e.Router.GET("/api/families/:familyId/balance", h.GetBalance).Bind(h.requireAuth).Bind(h.requireFamily)
 }
 
 // Create transaction handler
@@ -40,14 +48,8 @@ func (h *TransactionHandler) Create(e *core.RequestEvent) error {
 		return e.BadRequestError("Invalid request body", err)
 	}
 
-	// Get user ID from auth context
-	authRecord := e.Auth
-	if authRecord == nil {
-		return e.UnauthorizedError("Authentication required", nil)
-	}
-
 	// Call service
-	transaction, err := h.service.CreateTransaction(&req, authRecord.Id)
+	transaction, err := h.service.CreateTransaction(&req, e.Auth.Id)
 	if err != nil {
 		return e.BadRequestError("Failed to create transaction", err)
 	}
@@ -99,18 +101,12 @@ func (h *TransactionHandler) GetByFamily(e *core.RequestEvent) error {
 func (h *TransactionHandler) Update(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
 
-	// Get user ID from auth
-	authRecord := e.Auth
-	if authRecord == nil {
-		return e.UnauthorizedError("Authentication required", nil)
-	}
-
 	var req domain.UpdateTransactionRequest
 	if err := e.BindBody(&req); err != nil {
 		return e.BadRequestError("Invalid request body", err)
 	}
 
-	transaction, err := h.service.UpdateTransaction(id, authRecord.Id, &req)
+	transaction, err := h.service.UpdateTransaction(id, e.Auth.Id, &req)
 	if err != nil {
 		return e.BadRequestError("Failed to update transaction", err)
 	}
@@ -122,12 +118,7 @@ func (h *TransactionHandler) Update(e *core.RequestEvent) error {
 func (h *TransactionHandler) Delete(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
 
-	authRecord := e.Auth
-	if authRecord == nil {
-		return e.UnauthorizedError("Authentication required", nil)
-	}
-
-	if err := h.service.DeleteTransaction(id, authRecord.Id); err != nil {
+	if err := h.service.DeleteTransaction(id, e.Auth.Id); err != nil {
 		return e.BadRequestError("Failed to delete transaction", err)
 	}
 

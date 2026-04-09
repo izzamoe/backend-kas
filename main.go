@@ -53,7 +53,7 @@ func main() {
 	reportService := service.NewReportService(transactionRepo)
 
 	// Handler layer
-	transactionHandler := handler.NewTransactionHandler(transactionService)
+	transactionHandler := handler.NewTransactionHandler(transactionService, middleware.RequireAuth, requireFamily)
 	reportHandler := handler.NewReportHandler(reportService, familyMemberRepo, middleware.RequireAuth, requireFamily)
 
 	// Register routes
