@@ -100,16 +100,50 @@ func (m *mockTransactionRepo) GetDashboardData(familyID string, year, month int)
 	return 0, 0, 0, 0, 0, nil
 }
 
+// mockFamilyMemberRepo is a mock implementation of repository.FamilyMemberRepository.
+type mockFamilyMemberRepo struct {
+	getByUserIDFn   func(userID string) (*domain.FamilyMemberDTO, error)
+	getFamilyNameFn func(familyID string) (string, error)
+}
+
+func (m *mockFamilyMemberRepo) GetByUserID(userID string) (*domain.FamilyMemberDTO, error) {
+	if m.getByUserIDFn != nil {
+		return m.getByUserIDFn(userID)
+	}
+	return nil, nil
+}
+
+func (m *mockFamilyMemberRepo) GetFamilyName(familyID string) (string, error) {
+	if m.getFamilyNameFn != nil {
+		return m.getFamilyNameFn(familyID)
+	}
+	return "", nil
+}
+
+// mockCategoryRepo is a mock implementation of repository.CategoryRepository.
+type mockCategoryRepo struct {
+	getByIDFn func(id string) (*repository.CategoryInfo, error)
+}
+
+func (m *mockCategoryRepo) GetByID(id string) (*repository.CategoryInfo, error) {
+	if m.getByIDFn != nil {
+		return m.getByIDFn(id)
+	}
+	return nil, nil
+}
+
 // ---- CreateTransaction tests ----
 
 func TestCreateTransaction(t *testing.T) {
 	tests := []struct {
-		name       string
-		req        *domain.CreateTransactionRequest
-		userID     string
-		mockCreate func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
-		wantErr    bool
-		errMsg     string
+		name                string
+		req                 *domain.CreateTransactionRequest
+		userID              string
+		mockCreate          func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
+		mockGetByUserID     func(userID string) (*domain.FamilyMemberDTO, error)
+		mockGetCategoryByID func(id string) (*repository.CategoryInfo, error)
+		wantErr             bool
+		errMsg              string
 	}{
 		{
 			name: "amount zero returns error",
@@ -165,6 +199,12 @@ func TestCreateTransaction(t *testing.T) {
 			mockCreate: func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
 				return &domain.TransactionDTO{ID: "tx1", Amount: 50000}, nil
 			},
+			mockGetByUserID: func(userID string) (*domain.FamilyMemberDTO, error) {
+				return &domain.FamilyMemberDTO{FamilyID: "fam1"}, nil
+			},
+			mockGetCategoryByID: func(id string) (*repository.CategoryInfo, error) {
+				return &repository.CategoryInfo{ID: "cat1", FamilyID: "fam1", IsDefault: false}, nil
+			},
 			wantErr: false,
 		},
 		{
@@ -180,6 +220,103 @@ func TestCreateTransaction(t *testing.T) {
 			mockCreate: func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
 				return &domain.TransactionDTO{ID: "tx2", Amount: 20000}, nil
 			},
+			mockGetByUserID: func(userID string) (*domain.FamilyMemberDTO, error) {
+				return &domain.FamilyMemberDTO{FamilyID: "fam1"}, nil
+			},
+			mockGetCategoryByID: func(id string) (*repository.CategoryInfo, error) {
+				return &repository.CategoryInfo{ID: "cat1", FamilyID: "fam1", IsDefault: false}, nil
+			},
+			wantErr: false,
+		},
+		{
+			name: "user not member of family returns error",
+			req: &domain.CreateTransactionRequest{
+				FamilyID:   "fam1",
+				CategoryID: "cat1",
+				Amount:     100,
+				Type:       domain.TransactionTypeIncome,
+				Date:       "2026-01-01T00:00:00Z",
+			},
+			userID: "user1",
+			mockGetByUserID: func(userID string) (*domain.FamilyMemberDTO, error) {
+				return nil, nil
+			},
+			wantErr: true,
+			errMsg:  "user is not a member of the specified family",
+		},
+		{
+			name: "user in different family returns error",
+			req: &domain.CreateTransactionRequest{
+				FamilyID:   "fam1",
+				CategoryID: "cat1",
+				Amount:     100,
+				Type:       domain.TransactionTypeIncome,
+				Date:       "2026-01-01T00:00:00Z",
+			},
+			userID: "user2",
+			mockGetByUserID: func(userID string) (*domain.FamilyMemberDTO, error) {
+				return &domain.FamilyMemberDTO{FamilyID: "fam2"}, nil
+			},
+			wantErr: true,
+			errMsg:  "user is not a member of the specified family",
+		},
+		{
+			name: "category not found returns error",
+			req: &domain.CreateTransactionRequest{
+				FamilyID:   "fam1",
+				CategoryID: "cat_missing",
+				Amount:     100,
+				Type:       domain.TransactionTypeIncome,
+				Date:       "2026-01-01T00:00:00Z",
+			},
+			userID: "user1",
+			mockGetByUserID: func(userID string) (*domain.FamilyMemberDTO, error) {
+				return &domain.FamilyMemberDTO{FamilyID: "fam1"}, nil
+			},
+			mockGetCategoryByID: func(id string) (*repository.CategoryInfo, error) {
+				return nil, nil
+			},
+			wantErr: true,
+			errMsg:  "category not found",
+		},
+		{
+			name: "category belongs to different family returns error",
+			req: &domain.CreateTransactionRequest{
+				FamilyID:   "fam1",
+				CategoryID: "cat1",
+				Amount:     100,
+				Type:       domain.TransactionTypeIncome,
+				Date:       "2026-01-01T00:00:00Z",
+			},
+			userID: "user1",
+			mockGetByUserID: func(userID string) (*domain.FamilyMemberDTO, error) {
+				return &domain.FamilyMemberDTO{FamilyID: "fam1"}, nil
+			},
+			mockGetCategoryByID: func(id string) (*repository.CategoryInfo, error) {
+				return &repository.CategoryInfo{ID: "cat1", FamilyID: "fam2", IsDefault: false}, nil
+			},
+			wantErr: true,
+			errMsg:  "category does not belong to this family",
+		},
+		{
+			name: "default category allowed for any family",
+			req: &domain.CreateTransactionRequest{
+				FamilyID:   "fam1",
+				CategoryID: "cat_default",
+				Amount:     100,
+				Type:       domain.TransactionTypeIncome,
+				Date:       "2026-01-01T00:00:00Z",
+			},
+			userID: "user1",
+			mockCreate: func(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: "tx_new"}, nil
+			},
+			mockGetByUserID: func(userID string) (*domain.FamilyMemberDTO, error) {
+				return &domain.FamilyMemberDTO{FamilyID: "fam1"}, nil
+			},
+			mockGetCategoryByID: func(id string) (*repository.CategoryInfo, error) {
+				return &repository.CategoryInfo{ID: "cat_default", FamilyID: "fam99", IsDefault: true}, nil
+			},
 			wantErr: false,
 		},
 	}
@@ -187,7 +324,15 @@ func TestCreateTransaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockTransactionRepo{createFn: tt.mockCreate}
-			svc := NewTransactionService(repo)
+			familyRepo := &mockFamilyMemberRepo{}
+			if tt.mockGetByUserID != nil {
+				familyRepo.getByUserIDFn = tt.mockGetByUserID
+			}
+			categoryRepo := &mockCategoryRepo{}
+			if tt.mockGetCategoryByID != nil {
+				categoryRepo.getByIDFn = tt.mockGetCategoryByID
+			}
+			svc := NewTransactionService(repo, familyRepo, categoryRepo)
 
 			result, err := svc.CreateTransaction(tt.req, tt.userID)
 
@@ -276,7 +421,7 @@ func TestGetFamilyTransactions_Pagination(t *testing.T) {
 					return []*domain.TransactionDTO{}, nil
 				},
 			}
-			svc := NewTransactionService(repo)
+			svc := NewTransactionService(repo, &mockFamilyMemberRepo{}, &mockCategoryRepo{})
 
 			_, err := svc.GetFamilyTransactions("fam1", tt.page, tt.pageSize)
 			if err != nil {
@@ -373,7 +518,7 @@ func TestUpdateTransaction(t *testing.T) {
 				getCreatorIDFn: tt.mockGetCreatorID,
 				updateFn:       tt.mockUpdate,
 			}
-			svc := NewTransactionService(repo)
+			svc := NewTransactionService(repo, &mockFamilyMemberRepo{}, &mockCategoryRepo{})
 
 			result, err := svc.UpdateTransaction(tt.txID, tt.userID, tt.req)
 
@@ -462,7 +607,7 @@ func TestDeleteTransaction(t *testing.T) {
 				getCreatorIDFn: tt.mockGetCreatorID,
 				deleteFn:       tt.mockDelete,
 			}
-			svc := NewTransactionService(repo)
+			svc := NewTransactionService(repo, &mockFamilyMemberRepo{}, &mockCategoryRepo{})
 
 			err := svc.DeleteTransaction(tt.txID, tt.userID)
 
