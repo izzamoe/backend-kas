@@ -43,7 +43,7 @@ type CategoryBreakdownData struct {
 
 // TransactionRepository interface - abstraction layer
 type TransactionRepository interface {
-	Create(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
+	Create(req *domain.CreateTransactionRequest, userID, familyID string) (*domain.TransactionDTO, error)
 	GetByID(id string) (*domain.TransactionDTO, error)
 	GetCreatorID(id string) (string, error)
 	GetByFamilyID(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
@@ -69,7 +69,7 @@ func NewTransactionRepository(app core.App) TransactionRepository {
 }
 
 // Create transaction - menggunakan generated proxy
-func (r *transactionRepo) Create(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
+func (r *transactionRepo) Create(req *domain.CreateTransactionRequest, userID, familyID string) (*domain.TransactionDTO, error) {
 	collection, err := r.app.FindCachedCollectionByNameOrId("transactions")
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (r *transactionRepo) Create(req *domain.CreateTransactionRequest, userID st
 	record := core.NewRecord(collection)
 
 	// Set data menggunakan Set method dari Record
-	record.Set("family_id", req.FamilyID)
+	record.Set("family_id", familyID)
 	record.Set("created_by", userID)
 	record.Set("category_id", req.CategoryID)
 	record.Set("type", string(req.Type))
@@ -377,9 +377,9 @@ func (r *transactionRepo) recordToDTO(record *core.Record) (*domain.TransactionD
 		return nil, fmt.Errorf("failed to wrap transaction record: %w", err)
 	}
 
-	// Convert enum TypeSelectType to string using proxy
+	// Convert enum TypeSelectType2 to string using proxy
 	typeStr := "income"
-	if proxy.Type() == generated.Expense {
+	if proxy.Type() == generated.Expense2 {
 		typeStr = "expense"
 	}
 

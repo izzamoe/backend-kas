@@ -10,7 +10,7 @@ import (
 
 // TransactionService interface - business logic layer
 type TransactionService interface {
-	CreateTransaction(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error)
+	CreateTransaction(req *domain.CreateTransactionRequest, userID, familyID string) (*domain.TransactionDTO, error)
 	GetTransaction(id string) (*domain.TransactionDTO, error)
 	GetFamilyTransactions(familyID string, page, pageSize int) ([]*domain.TransactionDTO, error)
 	UpdateTransaction(id, userID string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
@@ -19,22 +19,20 @@ type TransactionService interface {
 }
 
 type transactionService struct {
-	transactionRepo  repository.TransactionRepository
-	familyMemberRepo repository.FamilyMemberRepository
-	categoryRepo     repository.CategoryRepository
+	transactionRepo repository.TransactionRepository
+	categoryRepo    repository.CategoryRepository
 }
 
 // NewTransactionService creates new transaction service
-func NewTransactionService(transactionRepo repository.TransactionRepository, familyMemberRepo repository.FamilyMemberRepository, categoryRepo repository.CategoryRepository) TransactionService {
+func NewTransactionService(transactionRepo repository.TransactionRepository, categoryRepo repository.CategoryRepository) TransactionService {
 	return &transactionService{
-		transactionRepo:  transactionRepo,
-		familyMemberRepo: familyMemberRepo,
-		categoryRepo:     categoryRepo,
+		transactionRepo: transactionRepo,
+		categoryRepo:    categoryRepo,
 	}
 }
 
 // CreateTransaction dengan business logic validation
-func (s *transactionService) CreateTransaction(req *domain.CreateTransactionRequest, userID string) (*domain.TransactionDTO, error) {
+func (s *transactionService) CreateTransaction(req *domain.CreateTransactionRequest, userID, familyID string) (*domain.TransactionDTO, error) {
 	// Business validation
 	if req.Amount <= 0 {
 		return nil, errors.New("amount must be greater than 0")
@@ -51,15 +49,6 @@ func (s *transactionService) CreateTransaction(req *domain.CreateTransactionRequ
 		return nil, errors.New("invalid date format, use ISO 8601")
 	}
 
-	// Validate user is member of the specified family
-	membership, err := s.familyMemberRepo.GetByUserID(userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to validate family membership: %w", err)
-	}
-	if membership == nil || membership.FamilyID != req.FamilyID {
-		return nil, errors.New("user is not a member of the specified family")
-	}
-
 	// Validate category belongs to family (or is a default category)
 	category, err := s.categoryRepo.GetByID(req.CategoryID)
 	if err != nil {
@@ -68,11 +57,11 @@ func (s *transactionService) CreateTransaction(req *domain.CreateTransactionRequ
 	if category == nil {
 		return nil, errors.New("category not found")
 	}
-	if !category.IsDefault && category.FamilyID != req.FamilyID {
+	if !category.IsDefault && category.FamilyID != familyID {
 		return nil, errors.New("category does not belong to this family")
 	}
 
-	return s.transactionRepo.Create(req, userID)
+	return s.transactionRepo.Create(req, userID, familyID)
 }
 
 // GetTransaction by ID

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"kas/internal/domain"
+	"kas/internal/middleware"
 	"kas/internal/service"
 	"net/http"
 	"strconv"
@@ -42,14 +43,17 @@ func (h *TransactionHandler) RegisterRoutes(e *core.ServeEvent) {
 
 // Create transaction handler
 func (h *TransactionHandler) Create(e *core.RequestEvent) error {
-	// Parse request body
+	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
+	if !ok {
+		return e.InternalServerError("Family context not found", nil)
+	}
+
 	var req domain.CreateTransactionRequest
 	if err := e.BindBody(&req); err != nil {
 		return e.BadRequestError("Invalid request body", err)
 	}
 
-	// Call service
-	transaction, err := h.service.CreateTransaction(&req, e.Auth.Id)
+	transaction, err := h.service.CreateTransaction(&req, e.Auth.Id, familyID)
 	if err != nil {
 		return e.BadRequestError("Failed to create transaction", err)
 	}

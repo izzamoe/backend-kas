@@ -54,7 +54,6 @@ type UserExpand struct {
 
 // CreateTransactionRequest untuk request body
 type CreateTransactionRequest struct {
-	FamilyID   string          `json:"family_id" validate:"required"`
 	CategoryID string          `json:"category_id" validate:"required"`
 	Type       TransactionType `json:"type" validate:"required,oneof=income expense"`
 	Amount     float64         `json:"amount" validate:"required,gt=0"`
