@@ -14,6 +14,8 @@ import (
 type FamilyMemberRepository interface {
 	GetByUserID(userID string) (*domain.FamilyMemberDTO, error)
 	GetFamilyName(familyID string) (string, error)
+	CreateMember(app core.App, familyID string, userID string, role string) error
+	DeleteMember(userID string) error
 }
 
 type familyMemberRepo struct {
@@ -62,4 +64,34 @@ func (r *familyMemberRepo) GetFamilyName(familyID string) (string, error) {
 		return "", err
 	}
 	return record.GetString("name"), nil
+}
+
+func (r *familyMemberRepo) CreateMember(app core.App, familyID string, userID string, role string) error {
+	collection, err := app.FindCachedCollectionByNameOrId("family_members")
+	if err != nil {
+		return fmt.Errorf("failed to find family_members collection: %w", err)
+	}
+	record := core.NewRecord(collection)
+	record.Set("family_id", familyID)
+	record.Set("user_id", userID)
+	record.Set("role", role)
+	return app.Save(record)
+}
+
+func (r *familyMemberRepo) DeleteMember(userID string) error {
+	record, err := r.app.FindFirstRecordByFilter(
+		"family_members",
+		"user_id = {:userID}",
+		dbx.Params{"userID": userID},
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("not a member of any family")
+		}
+		return fmt.Errorf("failed to find family member: %w", err)
+	}
+	if record == nil {
+		return fmt.Errorf("not a member of any family")
+	}
+	return r.app.Delete(record)
 }
