@@ -30,7 +30,7 @@ func bindTransactionRoutes(app *tests.TestApp, e *core.ServeEvent) {
 	categoryRepo := repository.NewCategoryRepository(app)
 	requireFamily := middleware.RequireFamily(familyMemberRepo)
 
-	transactionService := service.NewTransactionService(transactionRepo, familyMemberRepo, categoryRepo)
+	transactionService := service.NewTransactionService(transactionRepo, categoryRepo)
 	transactionHandler := handler.NewTransactionHandler(transactionService, middleware.RequireAuth, requireFamily)
 	transactionHandler.RegisterRoutes(e)
 }
