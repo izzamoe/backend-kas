@@ -305,14 +305,11 @@ components:
     CreateTransactionRequest:
       type: object
       required:
-        - family_id
         - category_id
         - type
         - amount
         - date
       properties:
-        family_id:
-          type: string
         category_id:
           type: string
         type:

@@ -47,26 +47,38 @@ func main() {
 	transactionRepo := repository.NewTransactionRepository(app)
 	familyMemberRepo := repository.NewFamilyMemberRepository(app)
 	categoryRepo := repository.NewCategoryRepository(app)
+	familyRepo := repository.NewFamilyRepository(app)
 	requireFamily := middleware.RequireFamily(familyMemberRepo)
 
 	// Service layer
-	transactionService := service.NewTransactionService(transactionRepo, familyMemberRepo, categoryRepo)
+	transactionService := service.NewTransactionService(transactionRepo, categoryRepo)
 	reportService := service.NewReportService(transactionRepo)
+	familyService := service.NewFamilyService(familyRepo, familyMemberRepo, app, middleware.InvalidateFamily)
 
 	// Handler layer
 	transactionHandler := handler.NewTransactionHandler(transactionService, middleware.RequireAuth, requireFamily)
 	reportHandler := handler.NewReportHandler(reportService, familyMemberRepo, middleware.RequireAuth, requireFamily)
+	familyHandler := handler.NewFamilyHandler(familyService, middleware.RequireAuth)
 
 	// Register routes
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Register custom API routes
 		transactionHandler.RegisterRoutes(se)
 		reportHandler.RegisterRoutes(se)
+		familyHandler.RegisterRoutes(se)
 
 		// Serves static files from the provided public dir (if exists)
 		se.Router.GET("/{path...}", apis.Static(os.DirFS("./pb_public"), false))
 
 		return se.Next()
+	})
+
+	app.OnRecordAfterCreateSuccess("families").BindFunc(func(e *core.RecordEvent) error {
+		familyID := e.Record.Id
+		if err := categoryRepo.SeedMasterCategories(e.App, familyID); err != nil {
+			log.Printf("WARNING: failed to seed master categories for family %s: %v", familyID, err)
+		}
+		return nil
 	})
 
 	if err := app.Start(); err != nil {

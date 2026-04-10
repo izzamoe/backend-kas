@@ -91,3 +91,11 @@ func RequireFamily(repo repository.FamilyMemberRepository) func(*core.RequestEve
 		return e.Next()
 	}
 }
+
+// InvalidateFamily removes the cached family membership for a user.
+// Call this after the user joins, creates, or leaves a family.
+func InvalidateFamily(userID string) {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	delete(cache.entries, userID)
+}
