@@ -95,8 +95,13 @@ type Categories struct {
 	icon       string
 	color      string
 	is_default bool
-	created    types.DateTime
-	updated    types.DateTime
+	// select: TypeSelectType
+	// - expense
+	// - income
+	type_     int
+	is_master bool
+	created   types.DateTime
+	updated   types.DateTime
 }
 
 type Transactions struct {

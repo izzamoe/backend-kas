@@ -191,6 +191,22 @@ func (p *FamilyMembers) SetUpdated(updated types.DateTime) {
 	p.Set("updated", updated)
 }
 
+type TypeSelectType int
+
+const (
+	Expense TypeSelectType = iota
+	Income
+)
+
+var zzTypeSelectTypeSelectNameMap = map[string]TypeSelectType{
+	"expense": 0,
+	"income":  1,
+}
+var zzTypeSelectTypeSelectIotaMap = map[TypeSelectType]string{
+	0: "expense",
+	1: "income",
+}
+
 type Categories struct {
 	core.BaseRecordProxy
 }
@@ -255,6 +271,31 @@ func (p *Categories) SetIsDefault(isDefault bool) {
 	p.Set("is_default", isDefault)
 }
 
+func (p *Categories) Type() TypeSelectType {
+	option := p.GetString("type")
+	i, ok := zzTypeSelectTypeSelectNameMap[option]
+	if !ok {
+		panic("Unknown select value")
+	}
+	return i
+}
+
+func (p *Categories) SetType(type_ TypeSelectType) {
+	i, ok := zzTypeSelectTypeSelectIotaMap[type_]
+	if !ok {
+		panic("Unknown select value")
+	}
+	p.Set("type", i)
+}
+
+func (p *Categories) IsMaster() bool {
+	return p.GetBool("is_master")
+}
+
+func (p *Categories) SetIsMaster(isMaster bool) {
+	p.Set("is_master", isMaster)
+}
+
 func (p *Categories) Created() types.DateTime {
 	return p.GetDateTime("created")
 }
@@ -271,18 +312,18 @@ func (p *Categories) SetUpdated(updated types.DateTime) {
 	p.Set("updated", updated)
 }
 
-type TypeSelectType int
+type TypeSelectType2 int
 
 const (
-	Income TypeSelectType = iota
-	Expense
+	Income2 TypeSelectType2 = iota
+	Expense2
 )
 
-var zzTypeSelectTypeSelectNameMap = map[string]TypeSelectType{
+var zzTypeSelectType2SelectNameMap = map[string]TypeSelectType2{
 	"income":  0,
 	"expense": 1,
 }
-var zzTypeSelectTypeSelectIotaMap = map[TypeSelectType]string{
+var zzTypeSelectType2SelectIotaMap = map[TypeSelectType2]string{
 	0: "income",
 	1: "expense",
 }
@@ -391,17 +432,17 @@ func (p *Transactions) SetDate(date types.DateTime) {
 	p.Set("date", date)
 }
 
-func (p *Transactions) Type() TypeSelectType {
+func (p *Transactions) Type() TypeSelectType2 {
 	option := p.GetString("type")
-	i, ok := zzTypeSelectTypeSelectNameMap[option]
+	i, ok := zzTypeSelectType2SelectNameMap[option]
 	if !ok {
 		panic("Unknown select value")
 	}
 	return i
 }
 
-func (p *Transactions) SetType(type_ TypeSelectType) {
-	i, ok := zzTypeSelectTypeSelectIotaMap[type_]
+func (p *Transactions) SetType(type_ TypeSelectType2) {
+	i, ok := zzTypeSelectType2SelectIotaMap[type_]
 	if !ok {
 		panic("Unknown select value")
 	}
