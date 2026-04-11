@@ -51,45 +51,39 @@ func (r *categoryRepo) GetByID(id string) (*CategoryInfo, error) {
 	}, nil
 }
 
-type masterCategorySeed struct {
-	Name  string
-	Icon  string
-	Color string
-	Type  string
-}
-
-var masterCategories = []masterCategorySeed{
-	{Name: "Makanan & Minuman", Icon: "🍔", Color: "#FF6B6B", Type: "expense"},
-	{Name: "Transportasi", Icon: "🚗", Color: "#4ECDC4", Type: "expense"},
-	{Name: "Belanja", Icon: "🛒", Color: "#45B7D1", Type: "expense"},
-	{Name: "Tagihan & Utilitas", Icon: "💡", Color: "#96CEB4", Type: "expense"},
-	{Name: "Kesehatan", Icon: "🏥", Color: "#FFEAA7", Type: "expense"},
-	{Name: "Pendidikan", Icon: "📚", Color: "#DDA0DD", Type: "expense"},
-	{Name: "Hiburan", Icon: "🎮", Color: "#98D8C8", Type: "expense"},
-	{Name: "Lainnya", Icon: "📦", Color: "#B0B0B0", Type: "expense"},
-	{Name: "Gaji", Icon: "💰", Color: "#2ECC71", Type: "income"},
-	{Name: "Bonus", Icon: "🎁", Color: "#F39C12", Type: "income"},
-	{Name: "Investasi", Icon: "📈", Color: "#3498DB", Type: "income"},
-	{Name: "Lainnya", Icon: "💵", Color: "#95A5A6", Type: "income"},
-}
-
 func (r *categoryRepo) SeedMasterCategories(app core.App, familyID string) error {
 	return app.RunInTransaction(func(txApp core.App) error {
+		masterRecords, err := txApp.FindRecordsByFilter(
+			"categories",
+			"is_master = true && family_id = ''",
+			"type,name",
+			-1,
+			0,
+			nil,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to find master categories: %w", err)
+		}
+		if len(masterRecords) == 0 {
+			return fmt.Errorf("no master categories found in database")
+		}
+
 		collection, err := txApp.FindCachedCollectionByNameOrId("categories")
 		if err != nil {
 			return fmt.Errorf("failed to find categories collection: %w", err)
 		}
-		for _, cat := range masterCategories {
+
+		for _, master := range masterRecords {
 			record := core.NewRecord(collection)
 			record.Set("family_id", familyID)
-			record.Set("name", cat.Name)
-			record.Set("icon", cat.Icon)
-			record.Set("color", cat.Color)
-			record.Set("type", cat.Type)
+			record.Set("name", master.GetString("name"))
+			record.Set("icon", master.GetString("icon"))
+			record.Set("color", master.GetString("color"))
+			record.Set("type", master.GetString("type"))
 			record.Set("is_default", true)
-			record.Set("is_master", true)
+			record.Set("is_master", false)
 			if err := txApp.Save(record); err != nil {
-				return fmt.Errorf("failed to save category %s: %w", cat.Name, err)
+				return fmt.Errorf("failed to save category %s: %w", master.GetString("name"), err)
 			}
 		}
 		return nil
