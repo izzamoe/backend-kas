@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: Vet
         run: go vet ./...
       - name: Build check
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: Build
         env:
           CGO_ENABLED: "0"
@@ -59,3 +59,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: kas-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+
+  deploy:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy webhook
+        run: |
+          curl -s -w '\n%{http_code}' -X POST ${{ secrets.URL_DEPLOY }} \
+            -H "Authorization: Bearer ${{ secrets.TOKEN_DEPLOY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"tag\":\"${{ github.ref_name }}\"}"
