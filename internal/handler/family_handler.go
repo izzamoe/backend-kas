@@ -9,11 +9,13 @@ import (
 	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
+// FamilyHandler handles HTTP requests for family management endpoints.
 type FamilyHandler struct {
 	service     service.FamilyService
 	requireAuth *hook.Handler[*core.RequestEvent]
 }
 
+// NewFamilyHandler creates a new FamilyHandler wired with the given service and auth middleware.
 func NewFamilyHandler(service service.FamilyService, requireAuth func(*core.RequestEvent) error) *FamilyHandler {
 	return &FamilyHandler{
 		service:     service,
@@ -21,12 +23,14 @@ func NewFamilyHandler(service service.FamilyService, requireAuth func(*core.Requ
 	}
 }
 
+// RegisterRoutes registers all family-related HTTP routes with their required middleware.
 func (h *FamilyHandler) RegisterRoutes(e *core.ServeEvent) {
 	e.Router.POST("/api/families", h.Create).Bind(h.requireAuth)
 	e.Router.POST("/api/families/join", h.Join).Bind(h.requireAuth)
 	e.Router.POST("/api/families/leave", h.Leave).Bind(h.requireAuth)
 }
 
+// Create handles POST /api/families — creates a new family for the authenticated user.
 func (h *FamilyHandler) Create(e *core.RequestEvent) error {
 	var req domain.CreateFamilyRequest
 	if err := e.BindBody(&req); err != nil {
@@ -41,6 +45,7 @@ func (h *FamilyHandler) Create(e *core.RequestEvent) error {
 	return e.JSON(http.StatusCreated, response)
 }
 
+// Join handles POST /api/families/join — adds the authenticated user to an existing family via invite code.
 func (h *FamilyHandler) Join(e *core.RequestEvent) error {
 	var req domain.JoinFamilyRequest
 	if err := e.BindBody(&req); err != nil {
@@ -59,6 +64,7 @@ func (h *FamilyHandler) Join(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, family)
 }
 
+// Leave handles POST /api/families/leave — removes the authenticated user from their current family.
 func (h *FamilyHandler) Leave(e *core.RequestEvent) error {
 	if err := h.service.LeaveFamily(e.Auth.Id); err != nil {
 		return e.BadRequestError("Failed to leave family", err)

@@ -11,15 +11,15 @@ import (
 
 // mockFamilyRepo is a mock implementation of repository.FamilyRepository.
 type mockFamilyRepo struct {
-	createFn           func(app core.App, name, inviteCode string) (*core.Record, error)
+	createFn           func(app core.App, name, inviteCode string) (*domain.FamilyDTO, error)
 	findByInviteCodeFn func(code string) (*domain.FamilyDTO, error)
 }
 
-func (m *mockFamilyRepo) Create(app core.App, name, inviteCode string) (*core.Record, error) {
+func (m *mockFamilyRepo) Create(app core.App, name, inviteCode string) (*domain.FamilyDTO, error) {
 	if m.createFn != nil {
 		return m.createFn(app, name, inviteCode)
 	}
-	return nil, nil
+	return &domain.FamilyDTO{}, nil
 }
 
 func (m *mockFamilyRepo) FindByInviteCode(code string) (*domain.FamilyDTO, error) {

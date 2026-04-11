@@ -11,33 +11,48 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
+// FamilyRepository defines the data access contract for family records.
 type FamilyRepository interface {
-	Create(app core.App, name string, inviteCode string) (*core.Record, error)
+	// Create persists a new family with the given name and invite code, then returns the created family as a DTO.
+	Create(app core.App, name string, inviteCode string) (*domain.FamilyDTO, error)
+	// FindByInviteCode looks up a family by its unique invite code. Returns nil, nil if no family is found.
 	FindByInviteCode(code string) (*domain.FamilyDTO, error)
 }
 
+// familyRepo is the concrete PocketBase implementation of FamilyRepository.
 type familyRepo struct {
 	app core.App
 }
 
+// NewFamilyRepository creates a new PocketBase-backed FamilyRepository.
 func NewFamilyRepository(app core.App) FamilyRepository {
 	return &familyRepo{app: app}
 }
 
-func (r *familyRepo) Create(app core.App, name string, inviteCode string) (*core.Record, error) {
-	collection, err := app.FindCachedCollectionByNameOrId("families")
+// Create persists a new family with the given name and invite code, then returns the created family as a DTO.
+func (r *familyRepo) Create(app core.App, name string, inviteCode string) (*domain.FamilyDTO, error) {
+	proxy, err := generated.NewProxy[generated.Families](app)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find families collection: %w", err)
+		return nil, fmt.Errorf("failed to create family proxy: %w", err)
 	}
-	record := core.NewRecord(collection)
-	record.Set("name", name)
-	record.Set("invite_code", inviteCode)
-	if err := app.Save(record); err != nil {
+
+	proxy.SetName(name)
+	proxy.SetInviteCode(inviteCode)
+
+	if err := app.Save(proxy.Record); err != nil {
 		return nil, fmt.Errorf("failed to save family: %w", err)
 	}
-	return record, nil
+
+	return &domain.FamilyDTO{
+		ID:         proxy.Id,
+		Name:       proxy.Name(),
+		InviteCode: proxy.InviteCode(),
+		CreatedAt:  proxy.Created().Time(),
+		UpdatedAt:  proxy.Updated().Time(),
+	}, nil
 }
 
+// FindByInviteCode looks up a family by its unique invite code. Returns nil, nil if no family is found.
 func (r *familyRepo) FindByInviteCode(code string) (*domain.FamilyDTO, error) {
 	record, err := r.app.FindFirstRecordByFilter(
 		"families",
@@ -53,6 +68,7 @@ func (r *familyRepo) FindByInviteCode(code string) (*domain.FamilyDTO, error) {
 	return r.recordToDTO(record)
 }
 
+// recordToDTO converts a raw PocketBase families record into a FamilyDTO using type-safe proxy access.
 func (r *familyRepo) recordToDTO(record *core.Record) (*domain.FamilyDTO, error) {
 	proxy, err := generated.WrapRecord[generated.Families](record)
 	if err != nil {
@@ -61,7 +77,7 @@ func (r *familyRepo) recordToDTO(record *core.Record) (*domain.FamilyDTO, error)
 	return &domain.FamilyDTO{
 		ID:         proxy.Id,
 		Name:       proxy.Name(),
-		InviteCode: record.GetString("invite_code"),
+		InviteCode: proxy.InviteCode(),
 		CreatedAt:  proxy.Created().Time(),
 		UpdatedAt:  proxy.Updated().Time(),
 	}, nil

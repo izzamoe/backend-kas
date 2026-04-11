@@ -11,21 +11,29 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
+// FamilyMemberRepository defines the data access contract for family membership records.
 type FamilyMemberRepository interface {
+	// GetByUserID retrieves the family membership for a user. Returns nil, nil if the user is not a member of any family.
 	GetByUserID(userID string) (*domain.FamilyMemberDTO, error)
+	// GetFamilyName retrieves the display name of a family by its ID.
 	GetFamilyName(familyID string) (string, error)
+	// CreateMember adds a user to a family with the specified role.
 	CreateMember(app core.App, familyID string, userID string, role string) error
+	// DeleteMember removes a user from their current family. Returns an error if the user is not a member.
 	DeleteMember(userID string) error
 }
 
+// familyMemberRepo is the concrete PocketBase implementation of FamilyMemberRepository.
 type familyMemberRepo struct {
 	app core.App
 }
 
+// NewFamilyMemberRepository creates a new PocketBase-backed FamilyMemberRepository.
 func NewFamilyMemberRepository(app core.App) FamilyMemberRepository {
 	return &familyMemberRepo{app: app}
 }
 
+// GetByUserID retrieves the family membership for a user. Returns nil, nil if the user is not a member of any family.
 func (r *familyMemberRepo) GetByUserID(userID string) (*domain.FamilyMemberDTO, error) {
 	record, err := r.app.FindFirstRecordByFilter(
 		"family_members",
@@ -42,6 +50,7 @@ func (r *familyMemberRepo) GetByUserID(userID string) (*domain.FamilyMemberDTO, 
 	return r.recordToDTO(record)
 }
 
+// recordToDTO converts a raw PocketBase family_members record into a FamilyMemberDTO using proxy access.
 func (r *familyMemberRepo) recordToDTO(record *core.Record) (*domain.FamilyMemberDTO, error) {
 	proxy, err := generated.WrapRecord[generated.FamilyMembers](record)
 	if err != nil {
@@ -50,34 +59,40 @@ func (r *familyMemberRepo) recordToDTO(record *core.Record) (*domain.FamilyMembe
 
 	return &domain.FamilyMemberDTO{
 		ID:        proxy.Id,
-		UserID:    record.GetString("user_id"),
-		FamilyID:  record.GetString("family_id"),
-		Role:      record.GetString("role"),
+		UserID:    proxy.Record.GetString("user_id"),
+		FamilyID:  proxy.Record.GetString("family_id"),
+		Role:      proxy.GetString("role"),
 		CreatedAt: proxy.Created().Time(),
 		UpdatedAt: proxy.Updated().Time(),
 	}, nil
 }
 
+// GetFamilyName retrieves the display name of a family by its ID.
 func (r *familyMemberRepo) GetFamilyName(familyID string) (string, error) {
 	record, err := r.app.FindRecordById("families", familyID)
 	if err != nil {
 		return "", err
 	}
-	return record.GetString("name"), nil
-}
-
-func (r *familyMemberRepo) CreateMember(app core.App, familyID string, userID string, role string) error {
-	collection, err := app.FindCachedCollectionByNameOrId("family_members")
+	proxy, err := generated.WrapRecord[generated.Families](record)
 	if err != nil {
-		return fmt.Errorf("failed to find family_members collection: %w", err)
+		return "", fmt.Errorf("failed to wrap family record: %w", err)
 	}
-	record := core.NewRecord(collection)
-	record.Set("family_id", familyID)
-	record.Set("user_id", userID)
-	record.Set("role", role)
-	return app.Save(record)
+	return proxy.Name(), nil
 }
 
+// CreateMember adds a user to a family with the specified role.
+func (r *familyMemberRepo) CreateMember(app core.App, familyID string, userID string, role string) error {
+	proxy, err := generated.NewProxy[generated.FamilyMembers](app)
+	if err != nil {
+		return fmt.Errorf("failed to create family member record: %w", err)
+	}
+	proxy.Record.Set("family_id", familyID)
+	proxy.Record.Set("user_id", userID)
+	proxy.Record.Set("role", role)
+	return app.Save(proxy.Record)
+}
+
+// DeleteMember removes a user from their current family. Returns an error if the user is not a member.
 func (r *familyMemberRepo) DeleteMember(userID string) error {
 	record, err := r.app.FindFirstRecordByFilter(
 		"family_members",

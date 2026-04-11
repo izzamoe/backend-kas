@@ -18,6 +18,7 @@ type FamilyService interface {
 	LeaveFamily(userID string) error
 }
 
+// familyService is the concrete implementation of FamilyService.
 type familyService struct {
 	familyRepo       repository.FamilyRepository
 	familyMemberRepo repository.FamilyMemberRepository
@@ -37,6 +38,7 @@ func NewFamilyService(familyRepo repository.FamilyRepository, familyMemberRepo r
 
 const inviteCodeChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
+// generateInviteCode generates a cryptographically secure 8-character alphanumeric invite code.
 func generateInviteCode() (string, error) {
 	result := make([]byte, 8)
 	for i := range result {
@@ -68,16 +70,16 @@ func (s *familyService) CreateFamily(req *domain.CreateFamilyRequest, userID str
 		return nil, fmt.Errorf("failed to generate invite code: %w", err)
 	}
 
-	var familyRecord *core.Record
+	var familyDTO *domain.FamilyDTO
 
 	err = s.app.RunInTransaction(func(txApp core.App) error {
-		record, err := s.familyRepo.Create(txApp, req.Name, inviteCode)
+		dto, err := s.familyRepo.Create(txApp, req.Name, inviteCode)
 		if err != nil {
 			return fmt.Errorf("failed to create family: %w", err)
 		}
-		familyRecord = record
+		familyDTO = dto
 
-		if err := s.familyMemberRepo.CreateMember(txApp, familyRecord.Id, userID, "owner"); err != nil {
+		if err := s.familyMemberRepo.CreateMember(txApp, familyDTO.ID, userID, "owner"); err != nil {
 			return fmt.Errorf("failed to create family member: %w", err)
 		}
 
@@ -91,14 +93,14 @@ func (s *familyService) CreateFamily(req *domain.CreateFamilyRequest, userID str
 
 	response := &domain.CreateFamilyResponse{
 		Family: domain.FamilyDTO{
-			ID:         familyRecord.Id,
-			Name:       familyRecord.GetString("name"),
-			InviteCode: familyRecord.GetString("invite_code"),
-			CreatedAt:  familyRecord.GetDateTime("created").Time(),
-			UpdatedAt:  familyRecord.GetDateTime("updated").Time(),
+			ID:         familyDTO.ID,
+			Name:       familyDTO.Name,
+			InviteCode: familyDTO.InviteCode,
+			CreatedAt:  familyDTO.CreatedAt,
+			UpdatedAt:  familyDTO.UpdatedAt,
 		},
 		Member: domain.FamilyMemberDTO{
-			FamilyID: familyRecord.Id,
+			FamilyID: familyDTO.ID,
 			UserID:   userID,
 			Role:     "owner",
 		},

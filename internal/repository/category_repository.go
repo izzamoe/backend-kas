@@ -9,6 +9,7 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
+// CategoryInfo holds the essential fields of a category record for validation purposes.
 type CategoryInfo struct {
 	ID        string
 	FamilyID  string
@@ -16,19 +17,23 @@ type CategoryInfo struct {
 	IsDefault bool
 }
 
+// CategoryRepository defines the data access contract for category records.
 type CategoryRepository interface {
 	GetByID(id string) (*CategoryInfo, error)
 	SeedMasterCategories(app core.App, familyID string) error
 }
 
+// categoryRepo is the concrete PocketBase implementation of CategoryRepository.
 type categoryRepo struct {
 	app core.App
 }
 
+// NewCategoryRepository creates a new PocketBase-backed CategoryRepository.
 func NewCategoryRepository(app core.App) CategoryRepository {
 	return &categoryRepo{app: app}
 }
 
+// GetByID retrieves a category by its unique ID. Returns nil, nil if the category is not found.
 func (r *categoryRepo) GetByID(id string) (*CategoryInfo, error) {
 	record, err := r.app.FindRecordById("categories", id)
 	if err != nil {
@@ -45,12 +50,13 @@ func (r *categoryRepo) GetByID(id string) (*CategoryInfo, error) {
 
 	return &CategoryInfo{
 		ID:        proxy.Id,
-		FamilyID:  record.GetString("family_id"),
+		FamilyID:  proxy.Record.GetString("family_id"),
 		Name:      proxy.Name(),
 		IsDefault: proxy.IsDefault(),
 	}, nil
 }
 
+// SeedMasterCategories copies all master categories into the given family, making per-family default categories.
 func (r *categoryRepo) SeedMasterCategories(app core.App, familyID string) error {
 	return app.RunInTransaction(func(txApp core.App) error {
 		masterRecords, err := txApp.FindRecordsByFilter(
@@ -68,22 +74,26 @@ func (r *categoryRepo) SeedMasterCategories(app core.App, familyID string) error
 			return fmt.Errorf("no master categories found in database")
 		}
 
-		collection, err := txApp.FindCachedCollectionByNameOrId("categories")
-		if err != nil {
-			return fmt.Errorf("failed to find categories collection: %w", err)
-		}
-
 		for _, master := range masterRecords {
-			record := core.NewRecord(collection)
-			record.Set("family_id", familyID)
-			record.Set("name", master.GetString("name"))
-			record.Set("icon", master.GetString("icon"))
-			record.Set("color", master.GetString("color"))
-			record.Set("type", master.GetString("type"))
-			record.Set("is_default", true)
-			record.Set("is_master", false)
-			if err := txApp.Save(record); err != nil {
-				return fmt.Errorf("failed to save category %s: %w", master.GetString("name"), err)
+			masterProxy, err := generated.WrapRecord[generated.Categories](master)
+			if err != nil {
+				return fmt.Errorf("failed to wrap master category: %w", err)
+			}
+
+			newProxy, err := generated.NewProxy[generated.Categories](txApp)
+			if err != nil {
+				return fmt.Errorf("failed to create category proxy: %w", err)
+			}
+
+			newProxy.Record.Set("family_id", familyID)
+			newProxy.SetName(masterProxy.Name())
+			newProxy.SetIcon(masterProxy.Icon())
+			newProxy.SetColor(masterProxy.Color())
+			newProxy.Record.Set("type", masterProxy.GetString("type"))
+			newProxy.SetIsDefault(true)
+			newProxy.SetIsMaster(false)
+			if err := txApp.Save(newProxy.Record); err != nil {
+				return fmt.Errorf("failed to save category %s: %w", masterProxy.Name(), err)
 			}
 		}
 		return nil
