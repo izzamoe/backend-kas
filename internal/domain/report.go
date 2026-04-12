@@ -12,13 +12,14 @@ type CategoryBreakdownDTO struct {
 
 // MonthlyReportDTO represents monthly financial report
 type MonthlyReportDTO struct {
-	FamilyID          string                 `json:"family_id"`
-	Year              int                    `json:"year"`
-	Month             int                    `json:"month"`
-	TotalIncome       float64                `json:"total_income"`
-	TotalExpense      float64                `json:"total_expense"`
-	Balance           float64                `json:"balance"` // TotalIncome - TotalExpense
-	CategoryBreakdown []CategoryBreakdownDTO `json:"category_breakdown"`
+	FamilyID         string                 `json:"family_id"`
+	Year             int                    `json:"year"`
+	Month            int                    `json:"month"`
+	TotalIncome      float64                `json:"total_income"`
+	TotalExpense     float64                `json:"total_expense"`
+	Balance          float64                `json:"balance"`           // TotalIncome - TotalExpense
+	ExpenseBreakdown []CategoryBreakdownDTO `json:"expense_breakdown"` // Breakdown per category for expenses
+	IncomeBreakdown  []CategoryBreakdownDTO `json:"income_breakdown"`  // Breakdown per category for income
 }
 
 // MonthlyReportRequest represents request parameters for monthly report

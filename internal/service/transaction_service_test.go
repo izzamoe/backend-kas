@@ -92,7 +92,7 @@ func (m *mockTransactionRepo) GetMonthlyReportData(familyID string, year, month 
 	if m.getMonthlyReportDataFn != nil {
 		return m.getMonthlyReportDataFn(familyID, year, month)
 	}
-	return &repository.MonthlyReportData{Categories: []repository.CategoryBreakdownData{}}, nil
+	return &repository.MonthlyReportData{ExpenseCategories: []repository.CategoryBreakdownData{}, IncomeCategories: []repository.CategoryBreakdownData{}}, nil
 }
 
 func (m *mockTransactionRepo) GetDashboardData(familyID string, year, month int) (float64, float64, float64, float64, float64, error) {

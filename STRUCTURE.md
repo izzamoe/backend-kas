@@ -20,19 +20,30 @@ uang-kas-keluarga/
 │
 ├── internal/                        # Application code
 │   ├── domain/                      # Business models
-│   │   └── transaction.go           # DTOs & request/response models
+│   │   ├── transaction.go           # DTOs & request/response models
+│   │   ├── report.go                # MonthlyReportDTO, CategoryBreakdownDTO, DashboardSummaryDTO
+│   │   ├── family.go                # Family DTOs
+│   │   └── family_member.go         # FamilyMember DTOs
 │   │
 │   ├── repository/                  # Data access layer
-│   │   └── transaction_repository.go # DB operations using generated proxies
+│   │   ├── transaction_repository.go # DB operations using generated proxies
+│   │   ├── category_repository.go   # Category DB operations
+│   │   ├── family_repository.go     # Family DB operations
+│   │   └── family_member_repository.go # FamilyMember DB operations
 │   │
 │   ├── service/                     # Business logic layer
-│   │   └── transaction_service.go   # Business rules & validation
+│   │   ├── transaction_service.go   # Business rules & validation
+│   │   ├── report_service.go        # Monthly report & dashboard summary logic
+│   │   └── family_service.go        # Family business logic
 │   │
 │   ├── handler/                     # HTTP handlers
-│   │   └── transaction_handler.go   # REST API endpoints
+│   │   ├── transaction_handler.go   # Transaction REST API endpoints
+│   │   ├── report_handler.go        # Report REST API endpoints
+│   │   └── family_handler.go        # Family REST API endpoints
 │   │
 │   ├── middleware/                  # HTTP middleware
-│   │   └── auth.go                  # Authentication middleware
+│   │   ├── auth.go                  # Authentication middleware
+│   │   └── context.go               # Context helpers (family_id, etc)
 │   │
 │   └── utils/                       # Internal utilities
 │
@@ -52,31 +63,49 @@ uang-kas-keluarga/
   - `TransactionDTO` - Data transfer object
   - `CreateTransactionRequest` - Request model
   - `UpdateTransactionRequest` - Update model
+- `internal/domain/report.go`
+  - `MonthlyReportDTO` - Monthly report with `expense_breakdown` & `income_breakdown`
+  - `CategoryBreakdownDTO` - Per-category aggregation (amount + count)
+  - `DashboardSummaryDTO` - Balance + monthly stats with % change
+  - `MonthlyReportRequest` / `DashboardSummaryRequest` - Request models
+- `internal/domain/family.go` - Family DTOs
+- `internal/domain/family_member.go` - FamilyMember DTOs
 
 ### Repository Layer (Data Access)
 - `internal/repository/transaction_repository.go`
   - `TransactionRepository` - Interface
   - `transactionRepo` - Implementation using generated proxies
-  - CRUD operations
+  - CRUD operations + `GetMonthlyReportData` (expense & income breakdown by category) + `GetDashboardData`
   - **Uses generated proxies for type-safety**
+- `internal/repository/category_repository.go` - Category data access
+- `internal/repository/family_repository.go` - Family data access
+- `internal/repository/family_member_repository.go` - FamilyMember data access
 
 ### Service Layer (Business Logic)
 - `internal/service/transaction_service.go`
   - `TransactionService` - Interface
   - `transactionService` - Implementation
-  - Business validation
-  - Authorization logic
+  - Business validation + authorization logic
+- `internal/service/report_service.go`
+  - `ReportService` - Interface
+  - `reportService` - Implementation
+  - `GetMonthlyReport` - Aggregates income & expense totals + per-category breakdowns
+  - `GetDashboardSummary` - Overall balance + monthly stats with % change vs prev month
+- `internal/service/family_service.go` - Family business logic
 
 ### Handler Layer (HTTP/API)
 - `internal/handler/transaction_handler.go`
   - `TransactionHandler` - HTTP request handlers
-  - REST API endpoints
-  - Request/response handling
+  - REST API endpoints for transactions
+- `internal/handler/report_handler.go`
+  - `ReportHandler` - HTTP request handlers
+  - `GET /api/reports/monthly` - Monthly report (income & expense per category)
+  - `GET /api/reports/summary` - Dashboard summary
+- `internal/handler/family_handler.go` - Family HTTP handlers
 
 ### Middleware
-- `internal/middleware/auth.go`
-  - Authentication middleware
-  - Authorization checks
+- `internal/middleware/auth.go` - Authentication & authorization middleware
+- `internal/middleware/context.go` - Context helpers (e.g. `GetFamilyIDFromContext`)
 
 ### Generated Code (by pocketbase-gogen)
 - `pbschema/template.go` - Editable schema representation

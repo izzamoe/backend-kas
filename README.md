@@ -221,6 +221,8 @@ make test
 
 ## API Endpoints
 
+> Semua endpoint memerlukan header `Authorization: Bearer YOUR_TOKEN` kecuali disebutkan lain.
+
 ### Transactions
 
 | Method | Endpoint | Description |
@@ -239,12 +241,94 @@ curl -X POST http://localhost:8090/api/transactions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "family_id": "family123",
     "category_id": "cat123",
+    "type": "expense",
     "amount": 50000,
     "note": "Belanja bulanan",
     "date": "2026-03-31T10:00:00Z"
   }'
+```
+
+### Reports
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/reports/monthly?year=&month=` | Monthly financial report with income & expense breakdown per category |
+| GET | `/api/reports/summary?year=&month=` | Dashboard summary (balance, monthly stats, % change vs prev month) |
+
+#### GET `/api/reports/monthly`
+
+Query parameters:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `year` | integer | Yes | Year (1900–2100) |
+| `month` | integer | Yes | Month (1–12) |
+
+**Response:**
+```json
+{
+  "family_id": "abc123",
+  "year": 2026,
+  "month": 4,
+  "total_income": 5000000,
+  "total_expense": 1800000,
+  "balance": 3200000,
+  "expense_breakdown": [
+    {
+      "category_id": "cat1",
+      "category_name": "Makanan",
+      "icon": "🍔",
+      "color": "#FF5733",
+      "total_amount": 800000,
+      "count": 12
+    }
+  ],
+  "income_breakdown": [
+    {
+      "category_id": "cat5",
+      "category_name": "Gaji",
+      "icon": "💼",
+      "color": "#33FF57",
+      "total_amount": 5000000,
+      "count": 1
+    }
+  ]
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8090/api/reports/monthly?year=2026&month=4 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### GET `/api/reports/summary`
+
+Query parameters:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `year` | integer | No | Year — default: current year |
+| `month` | integer | No | Month (1–12) — default: current month |
+
+**Response:**
+```json
+{
+  "family_name": "Keluarga Bahagia",
+  "user_name": "Budi",
+  "total_balance": 12000000,
+  "monthly_income": 5000000,
+  "monthly_income_change": 10.5,
+  "monthly_expense": 1800000,
+  "monthly_expense_change": -5.2
+}
+```
+
+**Example Request:**
+```bash
+curl "http://localhost:8090/api/reports/summary?year=2026&month=4" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ## Commands

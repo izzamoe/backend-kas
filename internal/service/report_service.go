@@ -30,26 +30,30 @@ func (s *reportService) GetMonthlyReport(req *domain.MonthlyReportRequest) (*dom
 		return nil, err
 	}
 
-	breakdown := make([]domain.CategoryBreakdownDTO, len(data.Categories))
-	for i, c := range data.Categories {
-		breakdown[i] = domain.CategoryBreakdownDTO{
-			CategoryID:   c.CategoryID,
-			CategoryName: c.CategoryName,
-			Icon:         c.Icon,
-			Color:        c.Color,
-			TotalAmount:  c.TotalAmount,
-			Count:        c.Count,
+	toBreakdownDTO := func(src []repository.CategoryBreakdownData) []domain.CategoryBreakdownDTO {
+		out := make([]domain.CategoryBreakdownDTO, len(src))
+		for i, c := range src {
+			out[i] = domain.CategoryBreakdownDTO{
+				CategoryID:   c.CategoryID,
+				CategoryName: c.CategoryName,
+				Icon:         c.Icon,
+				Color:        c.Color,
+				TotalAmount:  c.TotalAmount,
+				Count:        c.Count,
+			}
 		}
+		return out
 	}
 
 	return &domain.MonthlyReportDTO{
-		FamilyID:          req.FamilyID,
-		Year:              req.Year,
-		Month:             req.Month,
-		TotalIncome:       data.TotalIncome,
-		TotalExpense:      data.TotalExpense,
-		Balance:           data.TotalIncome - data.TotalExpense,
-		CategoryBreakdown: breakdown,
+		FamilyID:         req.FamilyID,
+		Year:             req.Year,
+		Month:            req.Month,
+		TotalIncome:      data.TotalIncome,
+		TotalExpense:     data.TotalExpense,
+		Balance:          data.TotalIncome - data.TotalExpense,
+		ExpenseBreakdown: toBreakdownDTO(data.ExpenseCategories),
+		IncomeBreakdown:  toBreakdownDTO(data.IncomeCategories),
 	}, nil
 }
 

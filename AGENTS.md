@@ -192,6 +192,57 @@ Based on PocketBase collections:
 - `generated.Transactions`
 - `generated.File`
 
+## API Endpoints
+
+### Transactions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/transactions` | Create transaction |
+| GET | `/api/transactions/:id` | Get transaction by ID |
+| GET | `/api/families/:familyId/transactions` | Get family transactions (paginated) |
+| PATCH | `/api/transactions/:id` | Update transaction |
+| DELETE | `/api/transactions/:id` | Delete transaction |
+| GET | `/api/families/:familyId/balance` | Get family balance |
+
+### Reports
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/reports/monthly?year=&month=` | Monthly report — income & expense totals + per-category breakdowns |
+| GET | `/api/reports/summary?year=&month=` | Dashboard summary — total balance, monthly stats, % change |
+
+**`GET /api/reports/monthly` response shape:**
+```json
+{
+  "family_id": "...",
+  "year": 2026,
+  "month": 4,
+  "total_income": 5000000,
+  "total_expense": 1800000,
+  "balance": 3200000,
+  "expense_breakdown": [
+    { "category_id": "...", "category_name": "Makanan", "icon": "🍔", "color": "#FF5733", "total_amount": 800000, "count": 12 }
+  ],
+  "income_breakdown": [
+    { "category_id": "...", "category_name": "Gaji", "icon": "💼", "color": "#33FF57", "total_amount": 5000000, "count": 1 }
+  ]
+}
+```
+
+**`GET /api/reports/summary` response shape:**
+```json
+{
+  "family_name": "Keluarga Bahagia",
+  "user_name": "Budi",
+  "total_balance": 12000000,
+  "monthly_income": 5000000,
+  "monthly_income_change": 10.5,
+  "monthly_expense": 1800000,
+  "monthly_expense_change": -5.2
+}
+```
+
 ## Adding New Features
 
 ### Example: Add Category Management

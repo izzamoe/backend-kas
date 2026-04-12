@@ -10,73 +10,92 @@ import (
 
 func TestGetMonthlyReport(t *testing.T) {
 	tests := []struct {
-		name             string
-		reportData       *repository.MonthlyReportData
-		wantIncome       float64
-		wantExpense      float64
-		wantBalance      float64
-		wantBreakLen     int
-		wantBreakAmounts map[string]float64
-		wantBreakCounts  map[string]int
+		name                    string
+		reportData              *repository.MonthlyReportData
+		wantIncome              float64
+		wantExpense             float64
+		wantBalance             float64
+		wantExpenseBreakLen     int
+		wantIncomeBreakLen      int
+		wantExpenseBreakAmounts map[string]float64
+		wantExpenseBreakCounts  map[string]int
+		wantIncomeBreakAmounts  map[string]float64
+		wantIncomeBreakCounts   map[string]int
 	}{
 		{
-			name: "empty list returns all zeros and empty breakdown",
+			name: "empty list returns all zeros and empty breakdowns",
 			reportData: &repository.MonthlyReportData{
-				TotalIncome:  0,
-				TotalExpense: 0,
-				Categories:   []repository.CategoryBreakdownData{},
+				TotalIncome:       0,
+				TotalExpense:      0,
+				ExpenseCategories: []repository.CategoryBreakdownData{},
+				IncomeCategories:  []repository.CategoryBreakdownData{},
 			},
-			wantIncome:   0,
-			wantExpense:  0,
-			wantBalance:  0,
-			wantBreakLen: 0,
+			wantIncome:          0,
+			wantExpense:         0,
+			wantBalance:         0,
+			wantExpenseBreakLen: 0,
+			wantIncomeBreakLen:  0,
 		},
 		{
-			name: "mixed income and expense correct totals",
+			name: "mixed income and expense correct totals and breakdowns",
 			reportData: &repository.MonthlyReportData{
 				TotalIncome:  150000,
 				TotalExpense: 50000,
-				Categories: []repository.CategoryBreakdownData{
+				ExpenseCategories: []repository.CategoryBreakdownData{
 					{CategoryID: "cat1", CategoryName: "Food", Icon: "🍔", Color: "#FF0000", TotalAmount: 30000, Count: 1},
 					{CategoryID: "cat2", CategoryName: "Transport", Icon: "🚗", Color: "#0000FF", TotalAmount: 20000, Count: 1},
 				},
+				IncomeCategories: []repository.CategoryBreakdownData{
+					{CategoryID: "cat3", CategoryName: "Salary", Icon: "💼", Color: "#00FF00", TotalAmount: 150000, Count: 1},
+				},
 			},
-			wantIncome:   150000,
-			wantExpense:  50000,
-			wantBalance:  100000,
-			wantBreakLen: 2,
+			wantIncome:          150000,
+			wantExpense:         50000,
+			wantBalance:         100000,
+			wantExpenseBreakLen: 2,
+			wantIncomeBreakLen:  1,
+			wantIncomeBreakAmounts: map[string]float64{
+				"cat3": 150000,
+			},
+			wantIncomeBreakCounts: map[string]int{
+				"cat3": 1,
+			},
 		},
 		{
 			name: "multiple expenses same category grouped correctly",
 			reportData: &repository.MonthlyReportData{
 				TotalIncome:  0,
 				TotalExpense: 35000,
-				Categories: []repository.CategoryBreakdownData{
+				ExpenseCategories: []repository.CategoryBreakdownData{
 					{CategoryID: "cat1", CategoryName: "Food", Icon: "🍔", Color: "#FF0000", TotalAmount: 35000, Count: 3},
 				},
+				IncomeCategories: []repository.CategoryBreakdownData{},
 			},
-			wantIncome:   0,
-			wantExpense:  35000,
-			wantBalance:  -35000,
-			wantBreakLen: 1,
-			wantBreakAmounts: map[string]float64{
+			wantIncome:          0,
+			wantExpense:         35000,
+			wantBalance:         -35000,
+			wantExpenseBreakLen: 1,
+			wantIncomeBreakLen:  0,
+			wantExpenseBreakAmounts: map[string]float64{
 				"cat1": 35000,
 			},
-			wantBreakCounts: map[string]int{
+			wantExpenseBreakCounts: map[string]int{
 				"cat1": 3,
 			},
 		},
 		{
 			name: "expense with nil category not included in breakdown",
 			reportData: &repository.MonthlyReportData{
-				TotalIncome:  0,
-				TotalExpense: 30000,
-				Categories:   []repository.CategoryBreakdownData{},
+				TotalIncome:       0,
+				TotalExpense:      30000,
+				ExpenseCategories: []repository.CategoryBreakdownData{},
+				IncomeCategories:  []repository.CategoryBreakdownData{},
 			},
-			wantIncome:   0,
-			wantExpense:  30000,
-			wantBalance:  -30000,
-			wantBreakLen: 0,
+			wantIncome:          0,
+			wantExpense:         30000,
+			wantBalance:         -30000,
+			wantExpenseBreakLen: 0,
+			wantIncomeBreakLen:  0,
 		},
 	}
 
@@ -104,42 +123,77 @@ func TestGetMonthlyReport(t *testing.T) {
 			if report.Balance != tt.wantBalance {
 				t.Errorf("Balance: expected %v, got %v", tt.wantBalance, report.Balance)
 			}
-			if len(report.CategoryBreakdown) != tt.wantBreakLen {
-				t.Errorf("CategoryBreakdown length: expected %d, got %d", tt.wantBreakLen, len(report.CategoryBreakdown))
+			if len(report.ExpenseBreakdown) != tt.wantExpenseBreakLen {
+				t.Errorf("ExpenseBreakdown length: expected %d, got %d", tt.wantExpenseBreakLen, len(report.ExpenseBreakdown))
+			}
+			if len(report.IncomeBreakdown) != tt.wantIncomeBreakLen {
+				t.Errorf("IncomeBreakdown length: expected %d, got %d", tt.wantIncomeBreakLen, len(report.IncomeBreakdown))
 			}
 
-			if tt.wantBreakAmounts != nil {
+			if tt.wantExpenseBreakAmounts != nil {
 				breakMap := make(map[string]domain.CategoryBreakdownDTO)
-				for _, b := range report.CategoryBreakdown {
+				for _, b := range report.ExpenseBreakdown {
 					breakMap[b.CategoryID] = b
 				}
-
-				for catID, wantAmt := range tt.wantBreakAmounts {
+				for catID, wantAmt := range tt.wantExpenseBreakAmounts {
 					b, ok := breakMap[catID]
 					if !ok {
-						t.Errorf("category %q missing from breakdown", catID)
+						t.Errorf("expense category %q missing from breakdown", catID)
 						continue
 					}
 					if b.TotalAmount != wantAmt {
-						t.Errorf("category %q TotalAmount: expected %v, got %v", catID, wantAmt, b.TotalAmount)
+						t.Errorf("expense category %q TotalAmount: expected %v, got %v", catID, wantAmt, b.TotalAmount)
 					}
 				}
 			}
 
-			if tt.wantBreakCounts != nil {
+			if tt.wantExpenseBreakCounts != nil {
 				breakMap := make(map[string]domain.CategoryBreakdownDTO)
-				for _, b := range report.CategoryBreakdown {
+				for _, b := range report.ExpenseBreakdown {
 					breakMap[b.CategoryID] = b
 				}
-
-				for catID, wantCnt := range tt.wantBreakCounts {
+				for catID, wantCnt := range tt.wantExpenseBreakCounts {
 					b, ok := breakMap[catID]
 					if !ok {
-						t.Errorf("category %q missing from breakdown", catID)
+						t.Errorf("expense category %q missing from breakdown", catID)
 						continue
 					}
 					if b.Count != wantCnt {
-						t.Errorf("category %q Count: expected %d, got %d", catID, wantCnt, b.Count)
+						t.Errorf("expense category %q Count: expected %d, got %d", catID, wantCnt, b.Count)
+					}
+				}
+			}
+
+			if tt.wantIncomeBreakAmounts != nil {
+				breakMap := make(map[string]domain.CategoryBreakdownDTO)
+				for _, b := range report.IncomeBreakdown {
+					breakMap[b.CategoryID] = b
+				}
+				for catID, wantAmt := range tt.wantIncomeBreakAmounts {
+					b, ok := breakMap[catID]
+					if !ok {
+						t.Errorf("income category %q missing from breakdown", catID)
+						continue
+					}
+					if b.TotalAmount != wantAmt {
+						t.Errorf("income category %q TotalAmount: expected %v, got %v", catID, wantAmt, b.TotalAmount)
+					}
+				}
+			}
+
+			if tt.wantIncomeBreakCounts != nil {
+				breakMap := make(map[string]domain.CategoryBreakdownDTO)
+				for _, b := range report.IncomeBreakdown {
+					breakMap[b.CategoryID] = b
+				}
+				for catID, wantCnt := range tt.wantIncomeBreakCounts {
+					b, ok := breakMap[catID]
+					if !ok {
+						t.Errorf("income category %q missing from breakdown", catID)
+						continue
+					}
+					if b.Count != wantCnt {
+						t.Errorf("income category %q Count: expected %d, got %d", catID, wantCnt, b.Count)
 					}
 				}
 			}

@@ -180,7 +180,7 @@ paths:
   /api/reports/monthly:
     get:
       summary: Get monthly report
-      description: Retrieve financial report for a specific month.
+      description: Retrieve financial report for a specific month, including total income, total expense, balance, and per-category breakdowns for both income and expenses.
       security:
         - bearerAuth: []
       parameters:
@@ -356,8 +356,14 @@ components:
           type: number
         balance:
           type: number
-        category_breakdown:
+        expense_breakdown:
           type: array
+          description: Per-category breakdown for expenses
+          items:
+            $ref: '#/components/schemas/CategoryBreakdownDTO'
+        income_breakdown:
+          type: array
+          description: Per-category breakdown for income
           items:
             $ref: '#/components/schemas/CategoryBreakdownDTO'
 

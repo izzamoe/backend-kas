@@ -26,9 +26,10 @@ func dateRange(year, month int) (startDate, endDate string) {
 
 // MonthlyReportData holds pre-aggregated monthly report data from SQL
 type MonthlyReportData struct {
-	TotalIncome  float64
-	TotalExpense float64
-	Categories   []CategoryBreakdownData
+	TotalIncome       float64
+	TotalExpense      float64
+	ExpenseCategories []CategoryBreakdownData
+	IncomeCategories  []CategoryBreakdownData
 }
 
 // CategoryBreakdownData holds per-category aggregation from SQL
@@ -292,8 +293,7 @@ func (r *transactionRepo) GetMonthlyReportData(familyID string, year, month int)
 		Count        int     `db:"count"`
 	}
 
-	var categories []categoryRow
-	breakdownQuery := `
+	categoryBreakdownQuery := `
 		SELECT
 			t.category_id,
 			c.name,
@@ -304,34 +304,54 @@ func (r *transactionRepo) GetMonthlyReportData(familyID string, year, month int)
 		FROM transactions t
 		JOIN categories c ON t.category_id = c.id
 		WHERE t.family_id = {:familyID}
-		AND t.type = 'expense'
+		AND t.type = {:txType}
 		AND t.date >= {:startDate}
 		AND t.date < {:endDate}
 		GROUP BY t.category_id, c.name, c.icon, c.color
 	`
-	err = r.app.DB().NewQuery(breakdownQuery).Bind(map[string]any{
+
+	var expenseCategories []categoryRow
+	err = r.app.DB().NewQuery(categoryBreakdownQuery).Bind(map[string]any{
 		"familyID":  familyID,
+		"txType":    "expense",
 		"startDate": startDate,
 		"endDate":   endDate,
-	}).All(&categories)
+	}).All(&expenseCategories)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get category breakdown: %w", err)
+		return nil, fmt.Errorf("failed to get expense category breakdown: %w", err)
+	}
+
+	var incomeCategories []categoryRow
+	err = r.app.DB().NewQuery(categoryBreakdownQuery).Bind(map[string]any{
+		"familyID":  familyID,
+		"txType":    "income",
+		"startDate": startDate,
+		"endDate":   endDate,
+	}).All(&incomeCategories)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get income category breakdown: %w", err)
+	}
+
+	toBreakdownData := func(rows []categoryRow) []CategoryBreakdownData {
+		out := make([]CategoryBreakdownData, len(rows))
+		for i, c := range rows {
+			out[i] = CategoryBreakdownData{
+				CategoryID:   c.CategoryID,
+				CategoryName: c.CategoryName,
+				Icon:         c.Icon,
+				Color:        c.Color,
+				TotalAmount:  c.TotalAmount,
+				Count:        c.Count,
+			}
+		}
+		return out
 	}
 
 	result := &MonthlyReportData{
-		TotalIncome:  totalIncome,
-		TotalExpense: totalExpense,
-		Categories:   make([]CategoryBreakdownData, len(categories)),
-	}
-	for i, c := range categories {
-		result.Categories[i] = CategoryBreakdownData{
-			CategoryID:   c.CategoryID,
-			CategoryName: c.CategoryName,
-			Icon:         c.Icon,
-			Color:        c.Color,
-			TotalAmount:  c.TotalAmount,
-			Count:        c.Count,
-		}
+		TotalIncome:       totalIncome,
+		TotalExpense:      totalExpense,
+		ExpenseCategories: toBreakdownData(expenseCategories),
+		IncomeCategories:  toBreakdownData(incomeCategories),
 	}
 
 	return result, nil

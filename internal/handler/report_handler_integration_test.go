@@ -147,7 +147,7 @@ func TestReportHandler(t *testing.T) {
 				"Authorization": "Bearer " + token,
 			},
 			ExpectedStatus:  http.StatusOK,
-			ExpectedContent: []string{`"total_income"`, `"total_expense"`, `"balance"`, `"category_breakdown"`},
+			ExpectedContent: []string{`"total_income"`, `"total_expense"`, `"balance"`, `"expense_breakdown"`, `"income_breakdown"`},
 			TestAppFactory: func(t testing.TB) *tests.TestApp {
 				return app
 			},
