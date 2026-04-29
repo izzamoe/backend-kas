@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"kas/internal/domain"
 	"kas/internal/repository"
 	"testing"
@@ -201,6 +202,20 @@ func TestGetMonthlyReport(t *testing.T) {
 	}
 }
 
+func TestGetMonthlyReportRepoError(t *testing.T) {
+	repo := &mockTransactionRepo{
+		getMonthlyReportDataFn: func(familyID string, year, month int) (*repository.MonthlyReportData, error) {
+			return nil, errors.New("monthly query failed")
+		},
+	}
+	svc := NewReportService(repo)
+
+	_, err := svc.GetMonthlyReport(&domain.MonthlyReportRequest{FamilyID: "fam1", Year: 2026, Month: 3})
+	if err == nil || err.Error() != "monthly query failed" {
+		t.Fatalf("expected monthly query failed error, got %v", err)
+	}
+}
+
 // ---- calculatePercentageChange tests ----
 
 func TestCalculatePercentageChange(t *testing.T) {
@@ -311,5 +326,19 @@ func TestGetDashboardSummary(t *testing.T) {
 				t.Errorf("MonthlyExpenseChange: expected %v, got %v", tt.wantExpenseChange, summary.MonthlyExpenseChange)
 			}
 		})
+	}
+}
+
+func TestGetDashboardSummaryRepoError(t *testing.T) {
+	repo := &mockTransactionRepo{
+		getDashboardDataFn: func(familyID string, year, month int) (float64, float64, float64, float64, float64, error) {
+			return 0, 0, 0, 0, 0, errors.New("dashboard query failed")
+		},
+	}
+	svc := NewReportService(repo)
+
+	_, err := svc.GetDashboardSummary(&domain.DashboardSummaryRequest{FamilyID: "fam1", Year: 2026, Month: 3})
+	if err == nil || err.Error() != "dashboard query failed" {
+		t.Fatalf("expected dashboard query failed error, got %v", err)
 	}
 }

@@ -3,11 +3,32 @@ package service
 import (
 	"errors"
 	"kas/internal/domain"
+	_ "kas/migrations"
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
+
+func setupFamilyServiceTestApp(t *testing.T) *pocketbase.PocketBase {
+	t.Helper()
+
+	dir, err := os.MkdirTemp("", "family_service_test_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	app := pocketbase.NewWithConfig(pocketbase.Config{DefaultDataDir: dir})
+	if err := app.Bootstrap(); err != nil {
+		t.Fatalf("failed to bootstrap app: %v", err)
+	}
+	t.Cleanup(func() { _ = app.ResetBootstrapState() })
+
+	return app
+}
 
 // mockFamilyRepo is a mock implementation of repository.FamilyRepository.
 type mockFamilyRepo struct {
@@ -144,6 +165,98 @@ func TestCreateFamily(t *testing.T) {
 	}
 }
 
+func TestCreateFamilySuccessAndTransactionErrors(t *testing.T) {
+	t.Run("successful create returns family and owner member", func(t *testing.T) {
+		app := setupFamilyServiceTestApp(t)
+		familyRepo := &mockFamilyRepo{
+			createFn: func(app core.App, name, inviteCode string) (*domain.FamilyDTO, error) {
+				if name != "Keluarga Test" {
+					t.Fatalf("expected family name Keluarga Test, got %s", name)
+				}
+				if len(inviteCode) != 8 {
+					t.Fatalf("expected 8 character invite code, got %q", inviteCode)
+				}
+				return &domain.FamilyDTO{ID: "fam1", Name: name, InviteCode: inviteCode}, nil
+			},
+		}
+		memberCreated := false
+		memberRepo := &mockFamilyMemberRepo{
+			createMemberFn: func(app core.App, familyID, userID, role string) error {
+				memberCreated = true
+				if familyID != "fam1" || userID != "user1" || role != "owner" {
+					t.Fatalf("unexpected member args: family=%s user=%s role=%s", familyID, userID, role)
+				}
+				return nil
+			},
+		}
+		invalidatedUserID := ""
+		svc := NewFamilyService(familyRepo, memberRepo, app, func(userID string) { invalidatedUserID = userID })
+
+		got, err := svc.CreateFamily(&domain.CreateFamilyRequest{Name: "Keluarga Test"}, "user1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !memberCreated {
+			t.Fatal("expected owner membership to be created")
+		}
+		if invalidatedUserID != "user1" {
+			t.Fatalf("expected cache invalidation for user1, got %s", invalidatedUserID)
+		}
+		if got.Family.ID != "fam1" || got.Family.Name != "Keluarga Test" || got.Member.Role != "owner" {
+			t.Fatalf("unexpected response: %+v", got)
+		}
+	})
+
+	t.Run("family create error is wrapped", func(t *testing.T) {
+		app := setupFamilyServiceTestApp(t)
+		svc := NewFamilyService(&mockFamilyRepo{
+			createFn: func(app core.App, name, inviteCode string) (*domain.FamilyDTO, error) {
+				return nil, errors.New("insert family failed")
+			},
+		}, &mockFamilyMemberRepo{}, app, func(string) {})
+
+		_, err := svc.CreateFamily(&domain.CreateFamilyRequest{Name: "Keluarga Test"}, "user1")
+		if err == nil || !strings.Contains(err.Error(), "failed to create family") {
+			t.Fatalf("expected wrapped create family error, got %v", err)
+		}
+	})
+
+	t.Run("member create error is wrapped", func(t *testing.T) {
+		app := setupFamilyServiceTestApp(t)
+		svc := NewFamilyService(&mockFamilyRepo{
+			createFn: func(app core.App, name, inviteCode string) (*domain.FamilyDTO, error) {
+				return &domain.FamilyDTO{ID: "fam1", Name: name, InviteCode: inviteCode}, nil
+			},
+		}, &mockFamilyMemberRepo{
+			createMemberFn: func(app core.App, familyID, userID, role string) error {
+				return errors.New("insert member failed")
+			},
+		}, app, func(string) {})
+
+		_, err := svc.CreateFamily(&domain.CreateFamilyRequest{Name: "Keluarga Test"}, "user1")
+		if err == nil || !strings.Contains(err.Error(), "failed to create family") {
+			t.Fatalf("expected wrapped transaction error, got %v", err)
+		}
+	})
+}
+
+func TestGenerateInviteCode(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		code, err := generateInviteCode()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(code) != 8 {
+			t.Fatalf("expected 8 characters, got %q", code)
+		}
+		for _, char := range code {
+			if !strings.ContainsRune(inviteCodeChars, char) {
+				t.Fatalf("invite code %q contains invalid char %q", code, char)
+			}
+		}
+	}
+}
+
 // ---- JoinFamily tests ----
 
 func TestJoinFamily(t *testing.T) {
@@ -246,6 +359,58 @@ func TestJoinFamily(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestJoinFamilySuccessAndCreateMemberError(t *testing.T) {
+	t.Run("successful join creates member and invalidates cache", func(t *testing.T) {
+		familyRepo := &mockFamilyRepo{
+			findByInviteCodeFn: func(code string) (*domain.FamilyDTO, error) {
+				if code != "ABCD1234" {
+					t.Fatalf("expected invite code ABCD1234, got %s", code)
+				}
+				return &domain.FamilyDTO{ID: "fam1", Name: "Keluarga Test", InviteCode: code}, nil
+			},
+		}
+		memberCreated := false
+		memberRepo := &mockFamilyMemberRepo{
+			createMemberFn: func(app core.App, familyID, userID, role string) error {
+				memberCreated = true
+				if familyID != "fam1" || userID != "user1" || role != "member" {
+					t.Fatalf("unexpected member args: family=%s user=%s role=%s", familyID, userID, role)
+				}
+				return nil
+			},
+		}
+		invalidatedUserID := ""
+		svc := NewFamilyService(familyRepo, memberRepo, nil, func(userID string) { invalidatedUserID = userID })
+
+		got, err := svc.JoinFamily(&domain.JoinFamilyRequest{InviteCode: "ABCD1234"}, "user1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.ID != "fam1" || !memberCreated || invalidatedUserID != "user1" {
+			t.Fatalf("unexpected join result: family=%+v memberCreated=%v invalidated=%s", got, memberCreated, invalidatedUserID)
+		}
+	})
+
+	t.Run("member create error is wrapped", func(t *testing.T) {
+		familyRepo := &mockFamilyRepo{
+			findByInviteCodeFn: func(code string) (*domain.FamilyDTO, error) {
+				return &domain.FamilyDTO{ID: "fam1", Name: "Keluarga Test", InviteCode: code}, nil
+			},
+		}
+		memberRepo := &mockFamilyMemberRepo{
+			createMemberFn: func(app core.App, familyID, userID, role string) error {
+				return errors.New("insert member failed")
+			},
+		}
+		svc := NewFamilyService(familyRepo, memberRepo, nil, func(string) {})
+
+		_, err := svc.JoinFamily(&domain.JoinFamilyRequest{InviteCode: "ABCD1234"}, "user1")
+		if err == nil || !strings.Contains(err.Error(), "failed to join family") {
+			t.Fatalf("expected failed to join family error, got %v", err)
+		}
+	})
 }
 
 // ---- LeaveFamily tests ----

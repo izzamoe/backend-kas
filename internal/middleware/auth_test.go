@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"testing"
+	"time"
 
 	"kas/internal/domain"
 )
@@ -48,6 +49,46 @@ func TestGetFamilyIDFromContext(t *testing.T) {
 			t.Errorf("expected ok=false for empty string, got true")
 		}
 	})
+}
+
+func TestFamilyCacheGetSetAndExpiry(t *testing.T) {
+	c := &familyCache{entries: make(map[string]*familyCacheEntry)}
+
+	if familyID, ok := c.get("user1"); ok || familyID != "" {
+		t.Fatalf("expected cache miss, got familyID=%q ok=%v", familyID, ok)
+	}
+
+	c.set("user1", "family1")
+	familyID, ok := c.get("user1")
+	if !ok || familyID != "family1" {
+		t.Fatalf("expected cache hit family1, got familyID=%q ok=%v", familyID, ok)
+	}
+
+	c.entries["expired"] = &familyCacheEntry{
+		familyID:  "family_expired",
+		expiresAt: time.Now().Add(-time.Second),
+	}
+	familyID, ok = c.get("expired")
+	if ok || familyID != "" {
+		t.Fatalf("expected expired cache miss, got familyID=%q ok=%v", familyID, ok)
+	}
+}
+
+func TestInvalidateFamily(t *testing.T) {
+	cache.mu.Lock()
+	cache.entries = map[string]*familyCacheEntry{
+		"user1": {
+			familyID:  "family1",
+			expiresAt: time.Now().Add(familyCacheTTL),
+		},
+	}
+	cache.mu.Unlock()
+
+	InvalidateFamily("user1")
+
+	if familyID, ok := cache.get("user1"); ok || familyID != "" {
+		t.Fatalf("expected cache entry to be invalidated, got familyID=%q ok=%v", familyID, ok)
+	}
 }
 
 func TestRequireFamily_NilAuth_DefensiveGuard(t *testing.T) {

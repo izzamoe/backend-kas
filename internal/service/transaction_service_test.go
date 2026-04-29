@@ -4,6 +4,7 @@ import (
 	"errors"
 	"kas/internal/domain"
 	"kas/internal/repository"
+	"strings"
 	"testing"
 
 	"github.com/pocketbase/pocketbase/core"
@@ -229,6 +230,38 @@ func TestCreateTransaction(t *testing.T) {
 			errMsg:  "category not found",
 		},
 		{
+			name: "category lookup error is wrapped",
+			req: &domain.CreateTransactionRequest{
+				CategoryID: "cat_error",
+				Amount:     100,
+				Type:       domain.TransactionTypeIncome,
+				Date:       "2026-01-01T00:00:00Z",
+			},
+			userID:   "user1",
+			familyID: "fam1",
+			mockGetCategoryByID: func(id string) (*repository.CategoryInfo, error) {
+				return nil, errors.New("db down")
+			},
+			wantErr: true,
+			errMsg:  "failed to validate category: db down",
+		},
+		{
+			name: "non-default category from another family returns error",
+			req: &domain.CreateTransactionRequest{
+				CategoryID: "cat_other_family",
+				Amount:     100,
+				Type:       domain.TransactionTypeExpense,
+				Date:       "2026-01-01T00:00:00Z",
+			},
+			userID:   "user1",
+			familyID: "fam1",
+			mockGetCategoryByID: func(id string) (*repository.CategoryInfo, error) {
+				return &repository.CategoryInfo{ID: id, FamilyID: "fam2", IsDefault: false}, nil
+			},
+			wantErr: true,
+			errMsg:  "category does not belong to this family",
+		},
+		{
 			name: "default category allowed for any family",
 			req: &domain.CreateTransactionRequest{
 				CategoryID: "cat_default",
@@ -277,6 +310,42 @@ func TestCreateTransaction(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetTransaction(t *testing.T) {
+	t.Run("returns transaction from repository", func(t *testing.T) {
+		repo := &mockTransactionRepo{
+			getByIDFn: func(id string) (*domain.TransactionDTO, error) {
+				if id != "tx1" {
+					t.Fatalf("expected id tx1, got %s", id)
+				}
+				return &domain.TransactionDTO{ID: id, Amount: 12000}, nil
+			},
+		}
+		svc := NewTransactionService(repo, &mockCategoryRepo{})
+
+		got, err := svc.GetTransaction("tx1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil || got.ID != "tx1" || got.Amount != 12000 {
+			t.Fatalf("unexpected transaction: %+v", got)
+		}
+	})
+
+	t.Run("propagates repository error", func(t *testing.T) {
+		repo := &mockTransactionRepo{
+			getByIDFn: func(id string) (*domain.TransactionDTO, error) {
+				return nil, errors.New("not found")
+			},
+		}
+		svc := NewTransactionService(repo, &mockCategoryRepo{})
+
+		_, err := svc.GetTransaction("missing")
+		if err == nil || err.Error() != "not found" {
+			t.Fatalf("expected not found error, got %v", err)
+		}
+	})
 }
 
 // ---- GetFamilyTransactions (pagination) tests ----
@@ -421,6 +490,52 @@ func TestUpdateTransaction(t *testing.T) {
 			errMsg:  "type must be either 'income' or 'expense'",
 		},
 		{
+			name:   "negative amount returns error",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{Amount: -1},
+			mockGetCreatorID: func(id string) (string, error) {
+				return "user1", nil
+			},
+			wantErr: true,
+			errMsg:  "amount must be greater than 0",
+		},
+		{
+			name:   "category lookup error is wrapped",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{CategoryID: "cat_error"},
+			mockGetCreatorID: func(id string) (string, error) {
+				return "user1", nil
+			},
+			wantErr: true,
+			errMsg:  "failed to validate category: db down",
+		},
+		{
+			name:   "missing category returns error",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{CategoryID: "missing"},
+			mockGetCreatorID: func(id string) (string, error) {
+				return "user1", nil
+			},
+			wantErr: true,
+			errMsg:  "category not found",
+		},
+		{
+			name:   "valid category update passes",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{CategoryID: "cat1"},
+			mockGetCreatorID: func(id string) (string, error) {
+				return "user1", nil
+			},
+			mockUpdate: func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {
+				return &domain.TransactionDTO{ID: id, CategoryID: req.CategoryID}, nil
+			},
+			wantErr: false,
+		},
+		{
 			name:   "valid type income passes",
 			txID:   "tx1",
 			userID: "user1",
@@ -441,7 +556,21 @@ func TestUpdateTransaction(t *testing.T) {
 				getCreatorIDFn: tt.mockGetCreatorID,
 				updateFn:       tt.mockUpdate,
 			}
-			svc := NewTransactionService(repo, &mockCategoryRepo{})
+			categoryRepo := &mockCategoryRepo{}
+			if tt.req.CategoryID == "cat_error" {
+				categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {
+					return nil, errors.New("db down")
+				}
+			} else if tt.req.CategoryID == "missing" {
+				categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {
+					return nil, nil
+				}
+			} else if tt.req.CategoryID != "" {
+				categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {
+					return &repository.CategoryInfo{ID: id}, nil
+				}
+			}
+			svc := NewTransactionService(repo, categoryRepo)
 
 			result, err := svc.UpdateTransaction(tt.txID, tt.userID, tt.req)
 
@@ -449,7 +578,7 @@ func TestUpdateTransaction(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected error but got nil")
 				}
-				if tt.errMsg != "" && err.Error() != tt.errMsg {
+				if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
 					t.Errorf("expected error %q, got %q", tt.errMsg, err.Error())
 				}
 				return
@@ -463,6 +592,42 @@ func TestUpdateTransaction(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetFamilyBalance(t *testing.T) {
+	t.Run("returns repository total", func(t *testing.T) {
+		repo := &mockTransactionRepo{
+			getTotalByFamilyFn: func(familyID string) (float64, error) {
+				if familyID != "fam1" {
+					t.Fatalf("expected family fam1, got %s", familyID)
+				}
+				return 345000, nil
+			},
+		}
+		svc := NewTransactionService(repo, &mockCategoryRepo{})
+
+		got, err := svc.GetFamilyBalance("fam1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != 345000 {
+			t.Fatalf("expected 345000, got %v", got)
+		}
+	})
+
+	t.Run("propagates repository error", func(t *testing.T) {
+		repo := &mockTransactionRepo{
+			getTotalByFamilyFn: func(familyID string) (float64, error) {
+				return 0, errors.New("sum failed")
+			},
+		}
+		svc := NewTransactionService(repo, &mockCategoryRepo{})
+
+		_, err := svc.GetFamilyBalance("fam1")
+		if err == nil || err.Error() != "sum failed" {
+			t.Fatalf("expected sum failed error, got %v", err)
+		}
+	})
 }
 
 // ---- DeleteTransaction tests ----

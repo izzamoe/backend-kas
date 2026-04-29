@@ -198,6 +198,32 @@ func TestTransactionHandler(t *testing.T) {
 		}).Test(t)
 	})
 
+	t.Run("POST invalid JSON returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+		token, _, _, _ := seedTransactionTestData(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "POST /api/transactions invalid JSON returns 400",
+			Method: http.MethodPost,
+			URL:    "/api/transactions",
+			Headers: map[string]string{
+				"Content-Type":  "application/json",
+				"Authorization": "Bearer " + token,
+			},
+			Body:            strings.NewReader(`{"type":`),
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
 	t.Run("GET by ID guest returns 401", func(t *testing.T) {
 		(&tests.ApiScenario{
 			Name:            "guest GET /api/transactions/:id returns 401",
@@ -381,6 +407,32 @@ func TestTransactionHandler(t *testing.T) {
 			Body:            strings.NewReader(`{"note":"updated note"}`),
 			ExpectedStatus:  http.StatusOK,
 			ExpectedContent: []string{`"id"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("PATCH invalid JSON returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+		token, _, _, txID := seedTransactionTestData(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "PATCH /api/transactions/:id invalid JSON returns 400",
+			Method: http.MethodPatch,
+			URL:    "/api/transactions/" + txID,
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+				"Content-Type":  "application/json",
+			},
+			Body:            strings.NewReader(`{"note":`),
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
 			TestAppFactory: func(t testing.TB) *tests.TestApp {
 				return app
 			},

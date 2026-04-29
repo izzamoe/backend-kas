@@ -174,6 +174,54 @@ func TestReportHandler(t *testing.T) {
 		}).Test(t)
 	})
 
+	t.Run("GET /api/reports/summary invalid year returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+		token, _, _, _ := seedTransactionTestData(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "GET /api/reports/summary invalid year returns 400",
+			Method: http.MethodGet,
+			URL:    "/api/reports/summary?year=bad&month=1",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindReportRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("GET /api/reports/summary invalid month returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+		token, _, _, _ := seedTransactionTestData(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "GET /api/reports/summary invalid month returns 400",
+			Method: http.MethodGet,
+			URL:    "/api/reports/summary?year=2026&month=0",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindReportRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
 	t.Run("GET /api/reports/summary valid with explicit year/month returns 200", func(t *testing.T) {
 		app := newTransactionTestApp(t)
 		defer app.Cleanup()

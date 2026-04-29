@@ -116,6 +116,32 @@ func TestFamilyHandler(t *testing.T) {
 		}).Test(t)
 	})
 
+	t.Run("POST invalid JSON returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+		token, _ := seedFamilyTestUser(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "POST /api/families invalid JSON returns 400",
+			Method: http.MethodPost,
+			URL:    "/api/families",
+			Headers: map[string]string{
+				"Content-Type":  "application/json",
+				"Authorization": "Bearer " + token,
+			},
+			Body:            strings.NewReader(`{"name":`),
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindFamilyRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
 	t.Run("POST already in family returns 400", func(t *testing.T) {
 		app := newTransactionTestApp(t)
 		defer app.Cleanup()
@@ -177,6 +203,32 @@ func TestFamilyHandler(t *testing.T) {
 			Body:            strings.NewReader(fmt.Sprintf(`{"invite_code":%q}`, inviteCode)),
 			ExpectedStatus:  http.StatusOK,
 			ExpectedContent: []string{`"id"`, `"name"`, `"invite_code"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindFamilyRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("JOIN invalid JSON returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+		token, _ := seedFamilyTestUser(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "POST /api/families/join invalid JSON returns 400",
+			Method: http.MethodPost,
+			URL:    "/api/families/join",
+			Headers: map[string]string{
+				"Content-Type":  "application/json",
+				"Authorization": "Bearer " + token,
+			},
+			Body:            strings.NewReader(`{"invite_code":`),
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
 			TestAppFactory: func(t testing.TB) *tests.TestApp {
 				return app
 			},
