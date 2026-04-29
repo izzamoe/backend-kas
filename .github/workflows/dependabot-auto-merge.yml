@@ -1,0 +1,73 @@
+name: Dependabot auto-merge
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    name: Merge successful Dependabot PR
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Merge Dependabot pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pullRequests = context.payload.workflow_run.pull_requests || [];
+
+            if (pullRequests.length === 0) {
+              core.info('No pull request is attached to this workflow run.');
+              return;
+            }
+
+            for (const pullRequestSummary of pullRequests) {
+              const { data: pullRequest } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pullRequestSummary.number,
+              });
+
+              if (pullRequest.user.login !== 'dependabot[bot]') {
+                core.info(`Skipping PR #${pullRequest.number}: author is ${pullRequest.user.login}.`);
+                continue;
+              }
+
+              if (pullRequest.state !== 'open') {
+                core.info(`Skipping PR #${pullRequest.number}: state is ${pullRequest.state}.`);
+                continue;
+              }
+
+              if (pullRequest.draft) {
+                core.info(`Skipping PR #${pullRequest.number}: PR is draft.`);
+                continue;
+              }
+
+              const labels = pullRequest.labels.map((label) => label.name);
+              if (labels.includes('semver-major')) {
+                core.info(`Skipping PR #${pullRequest.number}: semver-major requires manual review.`);
+                continue;
+              }
+
+              if (!pullRequest.head.ref.startsWith('dependabot/')) {
+                core.info(`Skipping PR #${pullRequest.number}: branch is ${pullRequest.head.ref}.`);
+                continue;
+              }
+
+              core.info(`Squash-merging Dependabot PR #${pullRequest.number}: ${pullRequest.title}`);
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pullRequest.number,
+                merge_method: 'squash',
+              });
+            }
