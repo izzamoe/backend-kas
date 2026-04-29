@@ -20,7 +20,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Merge Dependabot pull request
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const pullRequests = context.payload.workflow_run.pull_requests || [];
