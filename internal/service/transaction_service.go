@@ -13,6 +13,7 @@ type TransactionService interface {
 	CreateTransaction(req *domain.CreateTransactionRequest, userID, familyID string) (*domain.TransactionDTO, error)
 	GetTransaction(id string) (*domain.TransactionDTO, error)
 	GetFamilyTransactions(familyID string, page, pageSize int) ([]*domain.TransactionDTO, error)
+	GetTransactionsByDateRange(familyID, startDate, endDate string, page, perPage int) (*domain.TransactionListResponse, error)
 	UpdateTransaction(id, userID string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
 	DeleteTransaction(id, userID string) error
 	GetFamilyBalance(familyID string) (float64, error)
@@ -80,6 +81,55 @@ func (s *transactionService) GetFamilyTransactions(familyID string, page, pageSi
 
 	offset := (page - 1) * pageSize
 	return s.transactionRepo.GetByFamilyID(familyID, pageSize, offset)
+}
+
+// GetTransactionsByDateRange returns auth-scoped transactions for an inclusive date range.
+func (s *transactionService) GetTransactionsByDateRange(familyID, startDate, endDate string, page, perPage int) (*domain.TransactionListResponse, error) {
+	start, err := time.Parse(time.DateOnly, startDate)
+	if err != nil {
+		return nil, errors.New("invalid start date format, use YYYY-MM-DD")
+	}
+
+	end, err := time.Parse(time.DateOnly, endDate)
+	if err != nil {
+		return nil, errors.New("invalid end date format, use YYYY-MM-DD")
+	}
+	if end.Before(start) {
+		return nil, errors.New("end date must be greater than or equal to start date")
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+
+	offset := (page - 1) * perPage
+	endExclusive := end.AddDate(0, 0, 1).Format(time.DateOnly)
+	transactions, totalItems, err := s.transactionRepo.GetByFamilyDateRange(
+		familyID,
+		start.Format(time.DateOnly),
+		endExclusive,
+		perPage,
+		offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + perPage - 1) / perPage
+	}
+
+	return &domain.TransactionListResponse{
+		Items:      transactions,
+		Page:       page,
+		PerPage:    perPage,
+		TotalItems: totalItems,
+		TotalPages: totalPages,
+	}, nil
 }
 
 // UpdateTransaction with authorization

@@ -66,13 +66,13 @@ func createRepositoryFixtures(t *testing.T, app core.App) (familyID, userID, cat
 	})
 	user := createTestUser(t, app)
 	category := createTestRecord(t, app, "categories", map[string]any{
-		"family_id":   family.Id,
-		"name":        "Food",
-		"icon":        "🍔",
-		"color":       "#ff0000",
-		"type":        "expense",
-		"is_default":  false,
-		"is_master":   false,
+		"family_id":  family.Id,
+		"name":       "Food",
+		"icon":       "🍔",
+		"color":      "#ff0000",
+		"type":       "expense",
+		"is_default": false,
+		"is_master":  false,
 	})
 
 	return family.Id, user.Id, category.Id
@@ -261,6 +261,17 @@ func TestTransactionRepositoryIntegration(t *testing.T) {
 		t.Fatalf("expected 2 March transactions, got %d", len(marchTransactions))
 	}
 
+	rangedTransactions, totalItems, err := repo.GetByFamilyDateRange(familyID, "2026-03-01", "2026-04-01", 1, 0)
+	if err != nil {
+		t.Fatalf("GetByFamilyDateRange returned error: %v", err)
+	}
+	if len(rangedTransactions) != 1 || totalItems != 2 {
+		t.Fatalf("expected 1 ranged transaction and total 2, got len=%d total=%d", len(rangedTransactions), totalItems)
+	}
+	if rangedTransactions[0].Category == nil || rangedTransactions[0].Creator == nil || rangedTransactions[0].Family == nil {
+		t.Fatalf("expected expanded relations, got %+v", rangedTransactions[0])
+	}
+
 	updated, err := repo.Update(expense.ID, &domain.UpdateTransactionRequest{Amount: 75000, Note: "updated lunch"})
 	if err != nil {
 		t.Fatalf("Update returned error: %v", err)
@@ -313,13 +324,13 @@ func TestTransactionRepositoryAdditionalBranches(t *testing.T) {
 	app := setupRepositoryTestApp(t)
 	familyID, userID, categoryID := createRepositoryFixtures(t, app)
 	secondCategory := createTestRecord(t, app, "categories", map[string]any{
-		"family_id":   familyID,
-		"name":        "Salary",
-		"icon":        "💼",
-		"color":       "#00ff00",
-		"type":        "income",
-		"is_default":  false,
-		"is_master":   false,
+		"family_id":  familyID,
+		"name":       "Salary",
+		"icon":       "💼",
+		"color":      "#00ff00",
+		"type":       "income",
+		"is_default": false,
+		"is_master":  false,
 	})
 	repo := NewTransactionRepository(app)
 
@@ -398,13 +409,13 @@ func TestCategorySeedMasterCategoriesIntegration(t *testing.T) {
 	repo := NewCategoryRepository(app)
 
 	createTestRecord(t, app, "categories", map[string]any{
-		"family_id":   "",
-		"name":        "Master Income",
-		"icon":        "💰",
-		"color":       "#00ff00",
-		"type":        "income",
-		"is_default":  true,
-		"is_master":   true,
+		"family_id":  "",
+		"name":       "Master Income",
+		"icon":       "💰",
+		"color":      "#00ff00",
+		"type":       "income",
+		"is_default": true,
+		"is_master":  true,
 	})
 
 	if err := repo.SeedMasterCategories(app, familyID); err != nil {

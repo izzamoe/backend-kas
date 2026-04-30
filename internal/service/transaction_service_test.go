@@ -17,6 +17,7 @@ type mockTransactionRepo struct {
 	getByIDFn              func(id string) (*domain.TransactionDTO, error)
 	getCreatorIDFn         func(id string) (string, error)
 	getByFamilyIDFn        func(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
+	getByFamilyDateRangeFn func(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error)
 	getByFamilyAndMonthFn  func(familyID string, year, month int) ([]*domain.TransactionDTO, error)
 	updateFn               func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
 	deleteFn               func(id string) error
@@ -52,6 +53,13 @@ func (m *mockTransactionRepo) GetByFamilyID(familyID string, limit, offset int) 
 		return m.getByFamilyIDFn(familyID, limit, offset)
 	}
 	return nil, nil
+}
+
+func (m *mockTransactionRepo) GetByFamilyDateRange(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error) {
+	if m.getByFamilyDateRangeFn != nil {
+		return m.getByFamilyDateRangeFn(familyID, startDate, endDate, limit, offset)
+	}
+	return nil, 0, nil
 }
 
 func (m *mockTransactionRepo) GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error) {
@@ -428,6 +436,69 @@ func TestGetFamilyTransactions_Pagination(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetTransactionsByDateRange(t *testing.T) {
+	t.Run("valid request normalizes pagination and returns totals", func(t *testing.T) {
+		var gotFamilyID, gotStartDate, gotEndDate string
+		var gotLimit, gotOffset int
+
+		repo := &mockTransactionRepo{
+			getByFamilyDateRangeFn: func(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error) {
+				gotFamilyID = familyID
+				gotStartDate = startDate
+				gotEndDate = endDate
+				gotLimit = limit
+				gotOffset = offset
+				return []*domain.TransactionDTO{{ID: "tx1"}}, 3, nil
+			},
+		}
+		svc := NewTransactionService(repo, &mockCategoryRepo{})
+
+		result, err := svc.GetTransactionsByDateRange("fam1", "2026-05-01", "2026-05-31", 2, 2)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if gotFamilyID != "fam1" || gotStartDate != "2026-05-01" || gotEndDate != "2026-06-01" {
+			t.Fatalf("unexpected repo args: family=%s start=%s end=%s", gotFamilyID, gotStartDate, gotEndDate)
+		}
+		if gotLimit != 2 || gotOffset != 2 {
+			t.Fatalf("expected limit=2 offset=2, got limit=%d offset=%d", gotLimit, gotOffset)
+		}
+		if result.Page != 2 || result.PerPage != 2 || result.TotalItems != 3 || result.TotalPages != 2 || len(result.Items) != 1 {
+			t.Fatalf("unexpected response: %+v", result)
+		}
+	})
+
+	t.Run("invalid date range returns error", func(t *testing.T) {
+		svc := NewTransactionService(&mockTransactionRepo{}, &mockCategoryRepo{})
+
+		_, err := svc.GetTransactionsByDateRange("fam1", "2026-06-01", "2026-05-31", 1, 20)
+		if err == nil || err.Error() != "end date must be greater than or equal to start date" {
+			t.Fatalf("expected date range error, got %v", err)
+		}
+	})
+
+	t.Run("invalid pagination defaults to page 1 perPage 20", func(t *testing.T) {
+		var gotLimit, gotOffset int
+		repo := &mockTransactionRepo{
+			getByFamilyDateRangeFn: func(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error) {
+				gotLimit = limit
+				gotOffset = offset
+				return []*domain.TransactionDTO{}, 0, nil
+			},
+		}
+		svc := NewTransactionService(repo, &mockCategoryRepo{})
+
+		result, err := svc.GetTransactionsByDateRange("fam1", "2026-05-01", "2026-05-31", 0, 500)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotLimit != 20 || gotOffset != 0 || result.Page != 1 || result.PerPage != 20 {
+			t.Fatalf("unexpected pagination: limit=%d offset=%d result=%+v", gotLimit, gotOffset, result)
+		}
+	})
 }
 
 // ---- UpdateTransaction tests ----

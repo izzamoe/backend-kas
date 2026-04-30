@@ -69,3 +69,12 @@ type UpdateTransactionRequest struct {
 	Note       string          `json:"note,omitempty"`
 	Date       string          `json:"date,omitempty"`
 }
+
+// TransactionListResponse wraps paginated transaction list responses.
+type TransactionListResponse struct {
+	Items      []*TransactionDTO `json:"items"`
+	Page       int               `json:"page"`
+	PerPage    int               `json:"perPage"`
+	TotalItems int               `json:"totalItems"`
+	TotalPages int               `json:"totalPages"`
+}

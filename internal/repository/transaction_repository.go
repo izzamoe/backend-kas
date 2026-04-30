@@ -48,6 +48,7 @@ type TransactionRepository interface {
 	GetByID(id string) (*domain.TransactionDTO, error)
 	GetCreatorID(id string) (string, error)
 	GetByFamilyID(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
+	GetByFamilyDateRange(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error)
 	GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error)
 	Update(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
 	Delete(id string) error
@@ -135,6 +136,54 @@ func (r *transactionRepo) GetByFamilyID(familyID string, limit, offset int) ([]*
 	}
 
 	return dtos, nil
+}
+
+func (r *transactionRepo) GetByFamilyDateRange(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error) {
+	var totalItems int
+	countQuery := `
+		SELECT COUNT(*)
+		FROM transactions
+		WHERE family_id = {:familyID}
+		AND date >= {:startDate}
+		AND date < {:endDate}
+	`
+	err := r.app.DB().NewQuery(countQuery).Bind(map[string]any{
+		"familyID":  familyID,
+		"startDate": startDate,
+		"endDate":   endDate,
+	}).Row(&totalItems)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	records, err := r.app.FindRecordsByFilter(
+		"transactions",
+		"family_id = {:familyID} && date >= {:startDate} && date < {:endDate}",
+		"-date,-created",
+		limit,
+		offset,
+		map[string]any{
+			"familyID":  familyID,
+			"startDate": startDate,
+			"endDate":   endDate,
+		},
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	r.app.ExpandRecords(records, defaultExpandFields, nil)
+
+	dtos := make([]*domain.TransactionDTO, 0, len(records))
+	for _, record := range records {
+		dto, err := r.recordToDTO(record)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to convert record %s: %w", record.Id, err)
+		}
+		dtos = append(dtos, dto)
+	}
+
+	return dtos, totalItems, nil
 }
 
 func (r *transactionRepo) GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error) {
