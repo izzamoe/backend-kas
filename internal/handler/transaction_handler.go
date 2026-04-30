@@ -34,11 +34,43 @@ func NewTransactionHandler(
 // RegisterRoutes registers all transaction routes
 func (h *TransactionHandler) RegisterRoutes(e *core.ServeEvent) {
 	e.Router.POST("/api/transactions", h.Create).Bind(h.requireAuth).Bind(h.requireFamily)
+	e.Router.GET("/api/transactions", h.List).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.GET("/api/transactions/{id}", h.GetByID).Bind(h.requireAuth)
 	e.Router.GET("/api/families/{familyId}/transactions", h.GetByFamily).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.PATCH("/api/transactions/{id}", h.Update).Bind(h.requireAuth)
 	e.Router.DELETE("/api/transactions/{id}", h.Delete).Bind(h.requireAuth)
 	e.Router.GET("/api/families/{familyId}/balance", h.GetBalance).Bind(h.requireAuth).Bind(h.requireFamily)
+}
+
+// List handler returns authenticated user's family transactions for a date range.
+func (h *TransactionHandler) List(e *core.RequestEvent) error {
+	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
+	if !ok {
+		return e.InternalServerError("Family context not found", nil)
+	}
+
+	query := e.Request.URL.Query()
+	startDate := query.Get("start")
+	endDate := query.Get("end")
+	if startDate == "" {
+		return e.BadRequestError("start is required", nil)
+	}
+	if endDate == "" {
+		return e.BadRequestError("end is required", nil)
+	}
+
+	page, _ := strconv.Atoi(query.Get("page"))
+	perPage, _ := strconv.Atoi(query.Get("perPage"))
+	if perPage == 0 {
+		perPage, _ = strconv.Atoi(query.Get("pageSize"))
+	}
+
+	transactions, err := h.service.GetTransactionsByDateRange(familyID, startDate, endDate, page, perPage)
+	if err != nil {
+		return e.BadRequestError("Failed to get transactions", err)
+	}
+
+	return e.JSON(http.StatusOK, transactions)
 }
 
 // Create transaction handler

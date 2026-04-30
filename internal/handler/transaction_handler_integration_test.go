@@ -96,7 +96,7 @@ func seedTransactionTestData(t testing.TB, app *tests.TestApp) (string, string, 
 	tx.Set("type", "expense")
 	tx.Set("amount", 50000)
 	tx.Set("note", "test")
-	tx.Set("date", time.Now())
+	tx.Set("date", "2026-01-15T00:00:00Z")
 	if err := app.Save(tx); err != nil {
 		t.Fatalf("failed to save transaction: %v", err)
 	}
@@ -107,6 +107,60 @@ func seedTransactionTestData(t testing.TB, app *tests.TestApp) (string, string, 
 	}
 
 	return token, family.Id, category.Id, tx.Id
+}
+
+func seedTransactionRecord(t testing.TB, app *tests.TestApp, familyID, userID, categoryID, note, date string) string {
+	t.Helper()
+
+	txCol, err := app.FindCollectionByNameOrId("transactions")
+	if err != nil {
+		t.Fatalf("failed to find transactions collection: %v", err)
+	}
+	tx := core.NewRecord(txCol)
+	tx.Set("family_id", familyID)
+	tx.Set("created_by", userID)
+	tx.Set("category_id", categoryID)
+	tx.Set("type", "expense")
+	tx.Set("amount", 10000)
+	tx.Set("note", note)
+	tx.Set("date", date)
+	if err := app.Save(tx); err != nil {
+		t.Fatalf("failed to save transaction: %v", err)
+	}
+
+	return tx.Id
+}
+
+func seedOtherFamilyTransaction(t testing.TB, app *tests.TestApp, userID string) {
+	t.Helper()
+
+	family := createRecordForTransactionTest(t, app, "families", map[string]any{
+		"name":        "Other Family",
+		"invite_code": fmt.Sprintf("OTH%d", time.Now().UnixNano()),
+	})
+	category := createRecordForTransactionTest(t, app, "categories", map[string]any{
+		"family_id":  family.Id,
+		"name":       "Other Food",
+		"is_default": false,
+	})
+	seedTransactionRecord(t, app, family.Id, userID, category.Id, "other family may", "2026-05-15T12:00:00Z")
+}
+
+func createRecordForTransactionTest(t testing.TB, app *tests.TestApp, collectionName string, values map[string]any) *core.Record {
+	t.Helper()
+
+	collection, err := app.FindCollectionByNameOrId(collectionName)
+	if err != nil {
+		t.Fatalf("failed to find %s collection: %v", collectionName, err)
+	}
+	record := core.NewRecord(collection)
+	for key, value := range values {
+		record.Set(key, value)
+	}
+	if err := app.Save(record); err != nil {
+		t.Fatalf("failed to save %s record: %v", collectionName, err)
+	}
+	return record
 }
 
 func TestTransactionHandler(t *testing.T) {
@@ -321,6 +375,90 @@ func TestTransactionHandler(t *testing.T) {
 			},
 			ExpectedStatus:  http.StatusOK,
 			ExpectedContent: []string{`"items"`, `"page"`, `"pageSize"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("GET transactions guest returns 401", func(t *testing.T) {
+		(&tests.ApiScenario{
+			Name:            "guest GET /api/transactions returns 401",
+			Method:          http.MethodGet,
+			URL:             "/api/transactions?start=2026-05-01&end=2026-05-31",
+			ExpectedStatus:  http.StatusUnauthorized,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return newTransactionTestApp(t)
+			},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("GET transactions missing start returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+
+		token, _, _, _ := seedTransactionTestData(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "GET /api/transactions missing start returns 400",
+			Method: http.MethodGet,
+			URL:    "/api/transactions?end=2026-05-31",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("GET transactions uses auth family date range and pagination", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+
+		token, famID, catID, txID := seedTransactionTestData(t, app)
+		seededTx, err := app.FindRecordById("transactions", txID)
+		if err != nil {
+			t.Fatalf("failed to find seeded transaction: %v", err)
+		}
+		userID := seededTx.GetString("created_by")
+
+		seedTransactionRecord(t, app, famID, userID, catID, "may first", "2026-05-01T08:00:00Z")
+		seedTransactionRecord(t, app, famID, userID, catID, "may last", "2026-05-31T23:59:59Z")
+		seedTransactionRecord(t, app, famID, userID, catID, "june boundary", "2026-06-01T00:00:00Z")
+		seedOtherFamilyTransaction(t, app, userID)
+
+		(&tests.ApiScenario{
+			Name:   "GET /api/transactions date range returns paginated auth family results",
+			Method: http.MethodGet,
+			URL:    "/api/transactions?start=2026-05-01&end=2026-05-31&page=1&perPage=1&family_id=spoofed",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus: http.StatusOK,
+			ExpectedContent: []string{
+				`"items"`,
+				`"page":1`,
+				`"perPage":1`,
+				`"totalItems":2`,
+				`"totalPages":2`,
+				`"category"`,
+				`"creator"`,
+			},
 			TestAppFactory: func(t testing.TB) *tests.TestApp {
 				return app
 			},
