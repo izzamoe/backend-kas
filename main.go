@@ -1,12 +1,13 @@
 package main
 
 import (
+	"embed"
+	"io/fs"
 	"kas/internal/handler"
 	"kas/internal/middleware"
 	"kas/internal/repository"
 	"kas/internal/service"
 	"log"
-	"os"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -19,7 +20,15 @@ import (
 	_ "kas/migrations"
 )
 
+//go:embed pb_public
+var publicFiles embed.FS
+
 func main() {
+	publicFS, err := fs.Sub(publicFiles, "pb_public")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	app := pocketbase.NewWithConfig(pocketbase.Config{
 		DBConnect: func(dbPath string) (*dbx.DB, error) {
 			// PocketBase defaults + mmap_size for memory-mapped reads
@@ -67,8 +76,8 @@ func main() {
 		reportHandler.RegisterRoutes(se)
 		familyHandler.RegisterRoutes(se)
 
-		// Serves static files from the provided public dir (if exists)
-		se.Router.GET("/{path...}", apis.Static(os.DirFS("./pb_public"), false))
+		// Serves embedded static files from pb_public.
+		se.Router.GET("/{path...}", apis.Static(publicFS, false))
 
 		return se.Next()
 	})
