@@ -2,19 +2,101 @@ package middleware
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
 	"kas/internal/domain"
+	_ "kas/migrations"
+
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
+	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
 type mockFamilyMemberRepository struct {
-	member *domain.FamilyMemberDTO
-	err    error
+	member           *domain.FamilyMemberDTO
+	err              error
+	getByUserIDCalls int
+	lastUserID       string
 }
 
 func (m *mockFamilyMemberRepository) GetByUserID(userID string) (*domain.FamilyMemberDTO, error) {
+	m.getByUserIDCalls++
+	m.lastUserID = userID
 	return m.member, m.err
+}
+
+func (m *mockFamilyMemberRepository) GetFamilyName(familyID string) (string, error) {
+	return "", nil
+}
+
+func (m *mockFamilyMemberRepository) CreateMember(app core.App, familyID string, userID string, role string) error {
+	return nil
+}
+
+func (m *mockFamilyMemberRepository) DeleteMember(userID string) error {
+	return nil
+}
+
+func resetGlobalFamilyCache(t testing.TB) {
+	t.Helper()
+	cache.mu.Lock()
+	cache.entries = make(map[string]*familyCacheEntry, 64)
+	cache.mu.Unlock()
+}
+
+func newMiddlewareTestApp(t testing.TB) *tests.TestApp {
+	t.Helper()
+	app, err := tests.NewTestApp()
+	if err != nil {
+		t.Fatalf("failed to create test app: %v", err)
+	}
+	return app
+}
+
+func seedMiddlewareUser(t testing.TB, app *tests.TestApp) (token string, userID string) {
+	t.Helper()
+	collection, err := app.FindCollectionByNameOrId("users")
+	if err != nil {
+		t.Fatalf("failed to find users collection: %v", err)
+	}
+	record := core.NewRecord(collection)
+	record.Set("name", "Middleware User")
+	record.Set("email", fmt.Sprintf("middleware+%d@example.com", time.Now().UnixNano()))
+	record.SetPassword("password1234")
+	if err := app.Save(record); err != nil {
+		t.Fatalf("failed to save user: %v", err)
+	}
+	token, err = record.NewAuthToken()
+	if err != nil {
+		t.Fatalf("failed to create auth token: %v", err)
+	}
+	return token, record.Id
+}
+
+func bindRequireAuthRoute(e *core.ServeEvent) {
+	e.Router.GET("/middleware/auth", func(e *core.RequestEvent) error {
+		return e.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}).Bind(&hook.Handler[*core.RequestEvent]{Func: RequireAuth})
+}
+
+func bindRequireFamilyRoute(e *core.ServeEvent, repo *mockFamilyMemberRepository) {
+	e.Router.GET("/middleware/family", func(e *core.RequestEvent) error {
+		familyID, ok := GetFamilyIDFromContext(e.Request.Context())
+		if !ok {
+			return e.InternalServerError("family context missing", nil)
+		}
+		return e.JSON(http.StatusOK, map[string]string{"family_id": familyID})
+	}).Bind(&hook.Handler[*core.RequestEvent]{Func: RequireAuth}).Bind(&hook.Handler[*core.RequestEvent]{Func: RequireFamily(repo)})
+}
+
+func bindRequireFamilyOnlyRoute(e *core.ServeEvent, repo *mockFamilyMemberRepository) {
+	e.Router.GET("/middleware/family-only", func(e *core.RequestEvent) error {
+		return e.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}).Bind(&hook.Handler[*core.RequestEvent]{Func: RequireFamily(repo)})
 }
 
 func TestGetFamilyIDFromContext(t *testing.T) {
@@ -89,6 +171,207 @@ func TestInvalidateFamily(t *testing.T) {
 	if familyID, ok := cache.get("user1"); ok || familyID != "" {
 		t.Fatalf("expected cache entry to be invalidated, got familyID=%q ok=%v", familyID, ok)
 	}
+}
+
+func TestRequireAuthMiddleware(t *testing.T) {
+	t.Run("guest request returns 401", func(t *testing.T) {
+		(&tests.ApiScenario{
+			Name:            "guest request returns unauthorized",
+			Method:          http.MethodGet,
+			URL:             "/middleware/auth",
+			ExpectedStatus:  http.StatusUnauthorized,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return newMiddlewareTestApp(t)
+			},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindRequireAuthRoute(e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("authenticated request reaches handler", func(t *testing.T) {
+		app := newMiddlewareTestApp(t)
+		defer app.Cleanup()
+		token, _ := seedMiddlewareUser(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "authenticated request reaches protected route",
+			Method: http.MethodGet,
+			URL:    "/middleware/auth",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusOK,
+			ExpectedContent: []string{`"status":"ok"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindRequireAuthRoute(e)
+			},
+		}).Test(t)
+	})
+}
+
+func TestRequireFamilyMiddleware(t *testing.T) {
+	t.Run("missing auth middleware returns 500", func(t *testing.T) {
+		resetGlobalFamilyCache(t)
+		repo := &mockFamilyMemberRepository{}
+
+		(&tests.ApiScenario{
+			Name:            "RequireFamily without auth returns internal server error",
+			Method:          http.MethodGet,
+			URL:             "/middleware/family-only",
+			ExpectedStatus:  http.StatusInternalServerError,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return newMiddlewareTestApp(t)
+			},
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindRequireFamilyOnlyRoute(e, repo)
+			},
+		}).Test(t)
+	})
+
+	t.Run("user without family returns 403", func(t *testing.T) {
+		resetGlobalFamilyCache(t)
+		app := newMiddlewareTestApp(t)
+		defer app.Cleanup()
+		token, userID := seedMiddlewareUser(t, app)
+		repo := &mockFamilyMemberRepository{}
+
+		(&tests.ApiScenario{
+			Name:   "RequireFamily denies user without membership",
+			Method: http.MethodGet,
+			URL:    "/middleware/family",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusForbidden,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindRequireFamilyRoute(e, repo)
+			},
+		}).Test(t)
+
+		if repo.getByUserIDCalls != 1 {
+			t.Fatalf("expected repository lookup once, got %d", repo.getByUserIDCalls)
+		}
+		if repo.lastUserID != userID {
+			t.Fatalf("expected repository lookup with auth user %q, got %q", userID, repo.lastUserID)
+		}
+	})
+
+	t.Run("repository error returns 500", func(t *testing.T) {
+		resetGlobalFamilyCache(t)
+		app := newMiddlewareTestApp(t)
+		defer app.Cleanup()
+		token, userID := seedMiddlewareUser(t, app)
+		repo := &mockFamilyMemberRepository{err: errors.New("membership query failed")}
+
+		(&tests.ApiScenario{
+			Name:   "RequireFamily returns internal server error on repository failure",
+			Method: http.MethodGet,
+			URL:    "/middleware/family",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusInternalServerError,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindRequireFamilyRoute(e, repo)
+			},
+		}).Test(t)
+
+		if repo.lastUserID != userID {
+			t.Fatalf("expected repository lookup with auth user %q, got %q", userID, repo.lastUserID)
+		}
+	})
+
+	t.Run("cached family skips repository lookup", func(t *testing.T) {
+		resetGlobalFamilyCache(t)
+		app := newMiddlewareTestApp(t)
+		defer app.Cleanup()
+		token, userID := seedMiddlewareUser(t, app)
+		cache.set(userID, "cachedFamily")
+		repo := &mockFamilyMemberRepository{err: errors.New("repository should not be called on cache hit")}
+
+		(&tests.ApiScenario{
+			Name:   "RequireFamily uses cached family membership",
+			Method: http.MethodGet,
+			URL:    "/middleware/family",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusOK,
+			ExpectedContent: []string{`"family_id":"cachedFamily"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindRequireFamilyRoute(e, repo)
+			},
+		}).Test(t)
+
+		if repo.getByUserIDCalls != 0 {
+			t.Fatalf("expected cache hit to skip repository lookup, got %d calls", repo.getByUserIDCalls)
+		}
+	})
+
+	t.Run("valid family injects context and caches membership", func(t *testing.T) {
+		resetGlobalFamilyCache(t)
+		app := newMiddlewareTestApp(t)
+		defer app.Cleanup()
+		token, userID := seedMiddlewareUser(t, app)
+		repo := &mockFamilyMemberRepository{member: &domain.FamilyMemberDTO{UserID: userID, FamilyID: "family123", Role: "member"}}
+
+		(&tests.ApiScenario{
+			Name:   "RequireFamily injects family id into context",
+			Method: http.MethodGet,
+			URL:    "/middleware/family",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusOK,
+			ExpectedContent: []string{`"family_id":"family123"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindRequireFamilyRoute(e, repo)
+			},
+		}).Test(t)
+
+		if repo.getByUserIDCalls != 1 {
+			t.Fatalf("expected first request to query repository once, got %d", repo.getByUserIDCalls)
+		}
+		if repo.lastUserID != userID {
+			t.Fatalf("expected repository lookup with auth user %q, got %q", userID, repo.lastUserID)
+		}
+
+		cachedFamilyID, ok := cache.get(userID)
+		if !ok || cachedFamilyID != "family123" {
+			t.Fatalf("expected middleware to cache family123, got familyID=%q ok=%v", cachedFamilyID, ok)
+		}
+
+		InvalidateFamily(userID)
+		cachedFamilyID, ok = cache.get(userID)
+		if ok || cachedFamilyID != "" {
+			t.Fatalf("expected invalidation to remove cached family, got familyID=%q ok=%v", cachedFamilyID, ok)
+		}
+	})
 }
 
 func TestRequireFamily_NilAuth_DefensiveGuard(t *testing.T) {
