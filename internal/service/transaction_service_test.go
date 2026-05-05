@@ -480,6 +480,38 @@ func TestGetTransactionsByDateRange(t *testing.T) {
 		}
 	})
 
+	t.Run("invalid start date format returns error", func(t *testing.T) {
+		svc := NewTransactionService(&mockTransactionRepo{}, &mockCategoryRepo{})
+
+		_, err := svc.GetTransactionsByDateRange("fam1", "2026/05/01", "2026-05-31", 1, 20)
+		if err == nil || err.Error() != "invalid start date format, use YYYY-MM-DD" {
+			t.Fatalf("expected invalid start date error, got %v", err)
+		}
+	})
+
+	t.Run("invalid end date format returns error", func(t *testing.T) {
+		svc := NewTransactionService(&mockTransactionRepo{}, &mockCategoryRepo{})
+
+		_, err := svc.GetTransactionsByDateRange("fam1", "2026-05-01", "31-05-2026", 1, 20)
+		if err == nil || err.Error() != "invalid end date format, use YYYY-MM-DD" {
+			t.Fatalf("expected invalid end date error, got %v", err)
+		}
+	})
+
+	t.Run("repository error propagates", func(t *testing.T) {
+		repo := &mockTransactionRepo{
+			getByFamilyDateRangeFn: func(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error) {
+				return nil, 0, errors.New("date range query failed")
+			},
+		}
+		svc := NewTransactionService(repo, &mockCategoryRepo{})
+
+		_, err := svc.GetTransactionsByDateRange("fam1", "2026-05-01", "2026-05-31", 1, 20)
+		if err == nil || err.Error() != "date range query failed" {
+			t.Fatalf("expected repository error, got %v", err)
+		}
+	})
+
 	t.Run("invalid pagination defaults to page 1 perPage 20", func(t *testing.T) {
 		var gotLimit, gotOffset int
 		repo := &mockTransactionRepo{
@@ -537,7 +569,7 @@ func TestUpdateTransaction(t *testing.T) {
 			errMsg:  "unauthorized: you can only update your own transactions",
 		},
 		{
-			name:   "owner can update - dead code at line 88 never executes",
+			name:   "owner can update note",
 			txID:   "tx1",
 			userID: "user1",
 			req:    &domain.UpdateTransactionRequest{Note: "updated"},
@@ -546,6 +578,36 @@ func TestUpdateTransaction(t *testing.T) {
 			},
 			mockUpdate: func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {
 				return &domain.TransactionDTO{ID: "tx1", Note: "updated"}, nil
+			},
+			wantErr: false,
+		},
+		{
+			name:   "owner update repo error propagates",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{Note: "updated"},
+			mockGetCreatorID: func(id string) (string, error) {
+				return "user1", nil
+			},
+			mockUpdate: func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {
+				return nil, errors.New("update failed")
+			},
+			wantErr: true,
+			errMsg:  "update failed",
+		},
+		{
+			name:   "zero amount is treated as not updating amount",
+			txID:   "tx1",
+			userID: "user1",
+			req:    &domain.UpdateTransactionRequest{Amount: 0, Note: "note only"},
+			mockGetCreatorID: func(id string) (string, error) {
+				return "user1", nil
+			},
+			mockUpdate: func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {
+				if req.Amount != 0 || req.Note != "note only" {
+					t.Fatalf("unexpected update request: %+v", req)
+				}
+				return &domain.TransactionDTO{ID: id, Note: req.Note}, nil
 			},
 			wantErr: false,
 		},
