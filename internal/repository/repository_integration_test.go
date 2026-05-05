@@ -376,6 +376,22 @@ func TestTransactionRepositoryAdditionalBranches(t *testing.T) {
 		t.Fatalf("unexpected January dashboard data: balance=%v income=%v expense=%v prevIncome=%v prevExpense=%v", totalBalance, monthlyIncome, monthlyExpense, prevIncome, prevExpense)
 	}
 
+	emptyIncome, emptyExpense, err := repo.GetMonthlyStats(familyID, 2026, 2)
+	if err != nil {
+		t.Fatalf("GetMonthlyStats empty month returned error: %v", err)
+	}
+	if emptyIncome != 0 || emptyExpense != 0 {
+		t.Fatalf("expected empty month stats to be zero, got income=%v expense=%v", emptyIncome, emptyExpense)
+	}
+
+	emptyReport, err := repo.GetMonthlyReportData(familyID, 2026, 2)
+	if err != nil {
+		t.Fatalf("GetMonthlyReportData empty month returned error: %v", err)
+	}
+	if emptyReport.TotalIncome != 0 || emptyReport.TotalExpense != 0 || len(emptyReport.IncomeCategories) != 0 || len(emptyReport.ExpenseCategories) != 0 {
+		t.Fatalf("expected empty monthly report, got %+v", emptyReport)
+	}
+
 	if _, err := repo.Update("missingrecordid", &domain.UpdateTransactionRequest{Note: "nope"}); err == nil {
 		t.Fatal("expected Update missing record to fail")
 	}
