@@ -146,6 +146,39 @@ func seedOtherFamilyTransaction(t testing.TB, app *tests.TestApp, userID string)
 	seedTransactionRecord(t, app, family.Id, userID, category.Id, "other family may", "2026-05-15T12:00:00Z")
 }
 
+func seedOtherFamilyWithTransaction(t testing.TB, app *tests.TestApp, userID string) string {
+	t.Helper()
+
+	family := createRecordForTransactionTest(t, app, "families", map[string]any{
+		"name":        "Other Family",
+		"invite_code": fmt.Sprintf("OTH%d", time.Now().UnixNano()),
+	})
+	category := createRecordForTransactionTest(t, app, "categories", map[string]any{
+		"family_id":  family.Id,
+		"name":       "Other Food",
+		"is_default": false,
+	})
+	seedTransactionRecord(t, app, family.Id, userID, category.Id, "other family transaction", "2026-05-15T12:00:00Z")
+
+	return family.Id
+}
+
+func seedOtherFamilyTransactionID(t testing.TB, app *tests.TestApp, userID string) string {
+	t.Helper()
+
+	family := createRecordForTransactionTest(t, app, "families", map[string]any{
+		"name":        "Other Family",
+		"invite_code": fmt.Sprintf("OTH%d", time.Now().UnixNano()),
+	})
+	category := createRecordForTransactionTest(t, app, "categories", map[string]any{
+		"family_id":  family.Id,
+		"name":       "Other Food",
+		"is_default": false,
+	})
+
+	return seedTransactionRecord(t, app, family.Id, userID, category.Id, "other family transaction", "2026-05-15T12:00:00Z")
+}
+
 func createRecordForTransactionTest(t testing.TB, app *tests.TestApp, collectionName string, values map[string]any) *core.Record {
 	t.Helper()
 
@@ -319,6 +352,36 @@ func TestTransactionHandler(t *testing.T) {
 		}).Test(t)
 	})
 
+	t.Run("GET by ID for different family returns 403", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+
+		token, _, _, txID := seedTransactionTestData(t, app)
+		seededTx, err := app.FindRecordById("transactions", txID)
+		if err != nil {
+			t.Fatalf("failed to find seeded transaction: %v", err)
+		}
+		otherTxID := seedOtherFamilyTransactionID(t, app, seededTx.GetString("created_by"))
+
+		(&tests.ApiScenario{
+			Name:   "GET /api/transactions/:id rejects other family transaction",
+			Method: http.MethodGet,
+			URL:    "/api/transactions/" + otherTxID,
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusForbidden,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
 	t.Run("GET by ID valid returns 200", func(t *testing.T) {
 		app := newTransactionTestApp(t)
 		defer app.Cleanup()
@@ -385,6 +448,36 @@ func TestTransactionHandler(t *testing.T) {
 		}).Test(t)
 	})
 
+	t.Run("GET family transactions for different family returns 403", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+
+		token, _, _, txID := seedTransactionTestData(t, app)
+		seededTx, err := app.FindRecordById("transactions", txID)
+		if err != nil {
+			t.Fatalf("failed to find seeded transaction: %v", err)
+		}
+		otherFamilyID := seedOtherFamilyWithTransaction(t, app, seededTx.GetString("created_by"))
+
+		(&tests.ApiScenario{
+			Name:   "GET /api/families/:familyId/transactions rejects other family path",
+			Method: http.MethodGet,
+			URL:    "/api/families/" + otherFamilyID + "/transactions",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusForbidden,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
 	t.Run("GET transactions guest returns 401", func(t *testing.T) {
 		(&tests.ApiScenario{
 			Name:            "guest GET /api/transactions returns 401",
@@ -411,6 +504,31 @@ func TestTransactionHandler(t *testing.T) {
 			Name:   "GET /api/transactions missing start returns 400",
 			Method: http.MethodGet,
 			URL:    "/api/transactions?end=2026-05-31",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("GET transactions missing end returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+
+		token, _, _, _ := seedTransactionTestData(t, app)
+
+		(&tests.ApiScenario{
+			Name:   "GET /api/transactions missing end returns 400",
+			Method: http.MethodGet,
+			URL:    "/api/transactions?start=2026-05-01",
 			Headers: map[string]string{
 				"Authorization": "Bearer " + token,
 			},
@@ -621,6 +739,47 @@ func TestTransactionHandler(t *testing.T) {
 		}).Test(t)
 	})
 
+	t.Run("DELETE wrong owner returns 400", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+
+		_, _, _, txID := seedTransactionTestData(t, app)
+
+		userCol, err := app.FindCollectionByNameOrId("users")
+		if err != nil {
+			t.Fatalf("failed to find users: %v", err)
+		}
+		otherUser := core.NewRecord(userCol)
+		otherUser.Set("name", "Delete Other User")
+		otherUser.Set("email", fmt.Sprintf("delete-other+%d@example.com", time.Now().UnixNano()))
+		otherUser.SetPassword("password1234")
+		if err := app.Save(otherUser); err != nil {
+			t.Fatalf("failed to save other user: %v", err)
+		}
+		otherToken, err := otherUser.NewAuthToken()
+		if err != nil {
+			t.Fatalf("failed to generate token: %v", err)
+		}
+
+		(&tests.ApiScenario{
+			Name:   "DELETE /api/transactions/:id wrong owner returns 400",
+			Method: http.MethodDelete,
+			URL:    "/api/transactions/" + txID,
+			Headers: map[string]string{
+				"Authorization": "Bearer " + otherToken,
+			},
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{`"message"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
 	t.Run("GET balance guest returns 401", func(t *testing.T) {
 		(&tests.ApiScenario{
 			Name:            "guest GET /api/families/:familyId/balance returns 401",
@@ -652,6 +811,36 @@ func TestTransactionHandler(t *testing.T) {
 			},
 			ExpectedStatus:  http.StatusOK,
 			ExpectedContent: []string{`"balance"`},
+			TestAppFactory: func(t testing.TB) *tests.TestApp {
+				return app
+			},
+			DisableTestAppCleanup: true,
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				bindTransactionRoutes(app, e)
+			},
+		}).Test(t)
+	})
+
+	t.Run("GET balance for different family returns 403", func(t *testing.T) {
+		app := newTransactionTestApp(t)
+		defer app.Cleanup()
+
+		token, _, _, txID := seedTransactionTestData(t, app)
+		seededTx, err := app.FindRecordById("transactions", txID)
+		if err != nil {
+			t.Fatalf("failed to find seeded transaction: %v", err)
+		}
+		otherFamilyID := seedOtherFamilyWithTransaction(t, app, seededTx.GetString("created_by"))
+
+		(&tests.ApiScenario{
+			Name:   "GET /api/families/:familyId/balance rejects other family path",
+			Method: http.MethodGet,
+			URL:    "/api/families/" + otherFamilyID + "/balance",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:  http.StatusForbidden,
+			ExpectedContent: []string{`"message"`},
 			TestAppFactory: func(t testing.TB) *tests.TestApp {
 				return app
 			},

@@ -35,7 +35,7 @@ func NewTransactionHandler(
 func (h *TransactionHandler) RegisterRoutes(e *core.ServeEvent) {
 	e.Router.POST("/api/transactions", h.Create).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.GET("/api/transactions", h.List).Bind(h.requireAuth).Bind(h.requireFamily)
-	e.Router.GET("/api/transactions/{id}", h.GetByID).Bind(h.requireAuth)
+	e.Router.GET("/api/transactions/{id}", h.GetByID).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.GET("/api/families/{familyId}/transactions", h.GetByFamily).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.PATCH("/api/transactions/{id}", h.Update).Bind(h.requireAuth)
 	e.Router.DELETE("/api/transactions/{id}", h.Delete).Bind(h.requireAuth)
@@ -96,10 +96,17 @@ func (h *TransactionHandler) Create(e *core.RequestEvent) error {
 // GetByID handler
 func (h *TransactionHandler) GetByID(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
+	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
+	if !ok {
+		return e.InternalServerError("Family context not found", nil)
+	}
 
 	transaction, err := h.service.GetTransaction(id)
 	if err != nil {
 		return e.NotFoundError("Transaction not found", err)
+	}
+	if transaction.FamilyID != familyID {
+		return e.ForbiddenError("Cannot access another family's transaction", nil)
 	}
 
 	return e.JSON(http.StatusOK, transaction)
@@ -108,6 +115,13 @@ func (h *TransactionHandler) GetByID(e *core.RequestEvent) error {
 // GetByFamily handler with pagination
 func (h *TransactionHandler) GetByFamily(e *core.RequestEvent) error {
 	familyID := e.Request.PathValue("familyId")
+	authFamilyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
+	if !ok {
+		return e.InternalServerError("Family context not found", nil)
+	}
+	if familyID != authFamilyID {
+		return e.ForbiddenError("Cannot access another family's transactions", nil)
+	}
 
 	// Get pagination params
 	page, _ := strconv.Atoi(e.Request.URL.Query().Get("page"))
@@ -164,6 +178,13 @@ func (h *TransactionHandler) Delete(e *core.RequestEvent) error {
 // GetBalance handler
 func (h *TransactionHandler) GetBalance(e *core.RequestEvent) error {
 	familyID := e.Request.PathValue("familyId")
+	authFamilyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
+	if !ok {
+		return e.InternalServerError("Family context not found", nil)
+	}
+	if familyID != authFamilyID {
+		return e.ForbiddenError("Cannot access another family's balance", nil)
+	}
 
 	balance, err := h.service.GetFamilyBalance(familyID)
 	if err != nil {
