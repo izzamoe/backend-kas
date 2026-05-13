@@ -157,6 +157,9 @@ func (c *client) Deposit(ctx context.Context, req *DepositRequest) (*DepositResp
 func (c *client) Topup(ctx context.Context, req *TopupRequest) (*TransactionResponse, error) {
 	req.Username = c.cfg.Username
 	req.Sign = signTransaction(c.cfg.Username, c.cfg.APIKey, req.RefID)
+	if c.cfg.Testing {
+		req.Testing = true
+	}
 
 	var resp TransactionResponse
 	if err := c.post(ctx, "/transaction", req, &resp); err != nil {
@@ -169,6 +172,9 @@ func (c *client) InqPasca(ctx context.Context, req *InqPascaRequest) (*Transacti
 	req.Commands = "inq-pasca"
 	req.Username = c.cfg.Username
 	req.Sign = signTransaction(c.cfg.Username, c.cfg.APIKey, req.RefID)
+	if c.cfg.Testing {
+		req.Testing = true
+	}
 
 	var resp TransactionResponse
 	if err := c.post(ctx, "/transaction", req, &resp); err != nil {
@@ -181,6 +187,9 @@ func (c *client) PayPasca(ctx context.Context, req *PayPascaRequest) (*Transacti
 	req.Commands = "pay-pasca"
 	req.Username = c.cfg.Username
 	req.Sign = signTransaction(c.cfg.Username, c.cfg.APIKey, req.RefID)
+	if c.cfg.Testing {
+		req.Testing = true
+	}
 
 	var resp TransactionResponse
 	if err := c.post(ctx, "/transaction", req, &resp); err != nil {

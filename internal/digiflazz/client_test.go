@@ -270,6 +270,34 @@ func TestTopup_Happy(t *testing.T) {
 	}
 }
 
+func TestTopup_GlobalTestingMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertBaseRequest(t, r)
+		var req TopupRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		if !req.Testing {
+			t.Errorf("expected Testing=true when global testing mode is enabled, got false")
+		}
+		writeJSON(w, map[string]any{"data": TransactionResponse{RefID: req.RefID, Status: StatusSukses, Rc: "00"}})
+	}))
+	defer srv.Close()
+
+	client := NewClient(Config{
+		Username: testUsername,
+		APIKey:   testAPIKey,
+		BaseURL:  srv.URL,
+		Timeout:  5 * time.Second,
+		Testing:  true,
+	})
+
+	_, err := client.Topup(context.Background(), &TopupRequest{BuyerSKUCode: "xld10", CustomerNo: "08123456789", RefID: "global-test-001"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestTopup_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -321,6 +349,34 @@ func TestInqPasca_Happy(t *testing.T) {
 	}
 }
 
+func TestInqPasca_GlobalTestingMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertBaseRequest(t, r)
+		var req InqPascaRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		if !req.Testing {
+			t.Errorf("expected Testing=true when global testing mode is enabled, got false")
+		}
+		writeJSON(w, map[string]any{"data": TransactionResponse{RefID: req.RefID, Status: StatusSukses, Rc: "00"}})
+	}))
+	defer srv.Close()
+
+	client := NewClient(Config{
+		Username: testUsername,
+		APIKey:   testAPIKey,
+		BaseURL:  srv.URL,
+		Timeout:  5 * time.Second,
+		Testing:  true,
+	})
+
+	_, err := client.InqPasca(context.Background(), &InqPascaRequest{BuyerSKUCode: "pln", CustomerNo: "12345678901", RefID: "global-test-002"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestInqPasca_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -368,6 +424,34 @@ func TestPayPasca_Happy(t *testing.T) {
 	}
 	if resp.RefID != "pay001" {
 		t.Errorf("ref_id: got %q want pay001", resp.RefID)
+	}
+}
+
+func TestPayPasca_GlobalTestingMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertBaseRequest(t, r)
+		var req PayPascaRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		if !req.Testing {
+			t.Errorf("expected Testing=true when global testing mode is enabled, got false")
+		}
+		writeJSON(w, map[string]any{"data": TransactionResponse{RefID: req.RefID, CustomerNo: req.CustomerNo, Status: StatusSukses, Rc: "00"}})
+	}))
+	defer srv.Close()
+
+	client := NewClient(Config{
+		Username: testUsername,
+		APIKey:   testAPIKey,
+		BaseURL:  srv.URL,
+		Timeout:  5 * time.Second,
+		Testing:  true,
+	})
+
+	_, err := client.PayPasca(context.Background(), &PayPascaRequest{BuyerSKUCode: "pln", CustomerNo: "12345678901", RefID: "global-test-003"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
