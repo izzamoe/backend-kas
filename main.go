@@ -8,6 +8,7 @@ import (
 	"kas/internal/repository"
 	"kas/internal/service"
 	"log"
+	"os"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -23,6 +24,13 @@ import (
 //go:embed pb_public
 var publicFiles embed.FS
 
+// @title Uang Kas Keluarga API
+// @version 1.0.0
+// @description API for managing family finances, including transactions, reports, and Digiflazz integration.
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	publicFS, err := fs.Sub(publicFiles, "pb_public")
 	if err != nil {
@@ -57,17 +65,37 @@ func main() {
 	familyMemberRepo := repository.NewFamilyMemberRepository(app)
 	categoryRepo := repository.NewCategoryRepository(app)
 	familyRepo := repository.NewFamilyRepository(app)
+	digiflazzCredentialRepo := repository.NewDigiflazzCredentialRepository(app)
+	digiflazzProductRepo := repository.NewDigiflazzProductRepository(app)
+	digiflazzOrderRepo := repository.NewDigiflazzOrderRepository(app)
+	digiflazzEventRepo := repository.NewDigiflazzEventRepository(app)
 	requireFamily := middleware.RequireFamily(familyMemberRepo)
+	requireFamilyOwner := middleware.RequireFamilyOwner()
 
 	// Service layer
 	transactionService := service.NewTransactionService(transactionRepo, categoryRepo)
 	reportService := service.NewReportService(transactionRepo)
 	familyService := service.NewFamilyService(familyRepo, familyMemberRepo, app, middleware.InvalidateFamily)
+	digiflazzProductService := service.NewDigiflazzProductService(app, digiflazzProductRepo, digiflazzCredentialRepo, nil)
+	digiflazzCredentialService := service.NewDigiflazzCredentialService(digiflazzCredentialRepo, app, nil, digiflazzProductRepo, digiflazzProductService)
+	digiflazzOrderService := service.NewDigiflazzOrderService(digiflazzOrderRepo, service.DigiflazzOrderServiceDeps{
+		App:             app,
+		CredentialRepo:  digiflazzCredentialRepo,
+		ProductService:  digiflazzProductService,
+		EventRepo:       digiflazzEventRepo,
+		TransactionRepo: transactionRepo,
+		CategoryRepo:    categoryRepo,
+	})
+	digiflazzCronService := service.NewDigiflazzCronService(digiflazzProductService, digiflazzOrderService, digiflazzCredentialRepo, digiflazzOrderRepo, digiflazzEventRepo)
 
 	// Handler layer
 	transactionHandler := handler.NewTransactionHandler(transactionService, middleware.RequireAuth, requireFamily)
 	reportHandler := handler.NewReportHandler(reportService, familyMemberRepo, middleware.RequireAuth, requireFamily)
 	familyHandler := handler.NewFamilyHandler(familyService, middleware.RequireAuth)
+	digiflazzCredentialHandler := handler.NewDigiflazzCredentialHandler(digiflazzCredentialService, middleware.RequireAuth, requireFamily, requireFamilyOwner)
+	digiflazzProductHandler := handler.NewDigiflazzProductHandler(digiflazzProductService, middleware.RequireAuth, requireFamily)
+	digiflazzOrderHandler := handler.NewDigiflazzOrderHandler(digiflazzOrderService, middleware.RequireAuth, requireFamily)
+	digiflazzWebhookHandler := handler.NewDigiflazzWebhookHandler(digiflazzCredentialRepo, digiflazzOrderRepo, digiflazzEventRepo, digiflazzOrderService)
 
 	// Register routes
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
@@ -75,6 +103,10 @@ func main() {
 		transactionHandler.RegisterRoutes(se)
 		reportHandler.RegisterRoutes(se)
 		familyHandler.RegisterRoutes(se)
+		digiflazzCredentialHandler.RegisterRoutes(se)
+		digiflazzProductHandler.RegisterRoutes(se)
+		digiflazzOrderHandler.RegisterRoutes(se)
+		digiflazzWebhookHandler.RegisterRoutes(se)
 
 		// Serves embedded static files from pb_public.
 		se.Router.GET("/{path...}", apis.Static(publicFS, false))
@@ -89,6 +121,18 @@ func main() {
 		}
 		return nil
 	})
+
+	priceSyncSchedule := os.Getenv("DIGIFLAZZ_PRICE_SYNC_INTERVAL")
+	if priceSyncSchedule == "" {
+		priceSyncSchedule = "*/30 * * * *"
+	}
+	orderPollSchedule := os.Getenv("DIGIFLAZZ_ORDER_POLL_INTERVAL")
+	if orderPollSchedule == "" {
+		orderPollSchedule = "*/5 * * * *"
+	}
+
+	app.Cron().MustAdd("digiflazz-price-sync", priceSyncSchedule, digiflazzCronService.RunPriceSync)
+	app.Cron().MustAdd("digiflazz-order-poll", orderPollSchedule, digiflazzCronService.RunOrderPoll)
 
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
