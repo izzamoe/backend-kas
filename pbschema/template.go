@@ -131,3 +131,108 @@ type File struct {
 	created types.DateTime
 	updated types.DateTime
 }
+
+type Jenis struct {
+	// collection-name: jenis
+	// system: id
+	Id string
+	// select: JenisSelectType
+	// - system
+	// - manual
+	jenis int
+}
+
+type DigiflazzCredentials struct {
+	// collection-name: digiflazz_credentials
+	// system: id
+	Id                 string
+	family_id          *Families
+	username           string
+	api_key            string
+	testing            bool
+	webhook_token_hash string
+	webhook_secret     string
+	is_active          bool
+	created            types.DateTime
+	updated            types.DateTime
+}
+
+type DigiflazzProducts struct {
+	// collection-name: digiflazz_products
+	// system: id
+	Id                    string
+	family_id             *Families
+	credential_id         *DigiflazzCredentials
+	product_name          string
+	category              string
+	brand                 string
+	type_                 string
+	buyer_sku_code        string
+	price                 float64
+	admin                 float64
+	buyer_product_status  string
+	seller_product_status string
+	stock                 float64
+	multi                 bool
+	desc                  string
+	provider              string
+	is_prepaid            bool
+	created               types.DateTime
+	updated               types.DateTime
+}
+
+type DigiflazzOrders struct {
+	// collection-name: digiflazz_orders
+	// system: id
+	Id             string
+	family_id      *Families
+	created_by     *Users
+	ref_id         string
+	buyer_sku_code string
+	customer_no    string
+	product_name   string
+	category       string
+	// select: StatusSelectType
+	// - inquiry
+	// - pending
+	// - processing
+	// - success
+	// - failed
+	// - cancelled
+	status         int
+	price          float64
+	admin          float64
+	total          float64
+	sn             string
+	message        string
+	rc             string
+	payload        string
+	response       string
+	transaction_id string
+	is_prepaid     bool
+	created        types.DateTime
+	updated        types.DateTime
+}
+
+type DigiflazzEvents struct {
+	// collection-name: digiflazz_events
+	// system: id
+	Id       string
+	order_id *DigiflazzOrders
+	// select: EventTypeSelectType
+	// - topup
+	// - inquiry
+	// - pay
+	// - status
+	// - deposit
+	// - webhook
+	// - error
+	event_type    int
+	status_before string
+	status_after  string
+	payload       string
+	response      string
+	source        string
+	created       types.DateTime
+	updated       types.DateTime
+}

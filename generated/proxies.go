@@ -504,3 +504,697 @@ func (p *File) Updated() types.DateTime {
 func (p *File) SetUpdated(updated types.DateTime) {
 	p.Set("updated", updated)
 }
+
+type JenisSelectType int
+
+const (
+	System JenisSelectType = iota
+	Manual
+)
+
+var zzJenisSelectTypeSelectNameMap = map[string]JenisSelectType{
+	"system": 0,
+	"manual": 1,
+}
+var zzJenisSelectTypeSelectIotaMap = map[JenisSelectType]string{
+	0: "system",
+	1: "manual",
+}
+
+type Jenis struct {
+	core.BaseRecordProxy
+}
+
+func (p *Jenis) CollectionName() string {
+	return "jenis"
+}
+
+func (p *Jenis) Jenis() JenisSelectType {
+	option := p.GetString("jenis")
+	i, ok := zzJenisSelectTypeSelectNameMap[option]
+	if !ok {
+		panic("Unknown select value")
+	}
+	return i
+}
+
+func (p *Jenis) SetJenis(jenis JenisSelectType) {
+	i, ok := zzJenisSelectTypeSelectIotaMap[jenis]
+	if !ok {
+		panic("Unknown select value")
+	}
+	p.Set("jenis", i)
+}
+
+type DigiflazzCredentials struct {
+	core.BaseRecordProxy
+}
+
+func (p *DigiflazzCredentials) CollectionName() string {
+	return "digiflazz_credentials"
+}
+
+func (p *DigiflazzCredentials) FamilyId() *Families {
+	var proxy *Families
+	if rel := p.ExpandedOne("family_id"); rel != nil {
+		proxy = &Families{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *DigiflazzCredentials) SetFamilyId(familyId *Families) {
+	var id string
+	if familyId != nil {
+		id = familyId.Id
+	}
+	p.Record.Set("family_id", id)
+	e := p.Expand()
+	if familyId != nil {
+		e["family_id"] = familyId.Record
+	} else {
+		delete(e, "family_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *DigiflazzCredentials) Username() string {
+	return p.GetString("username")
+}
+
+func (p *DigiflazzCredentials) SetUsername(username string) {
+	p.Set("username", username)
+}
+
+func (p *DigiflazzCredentials) ApiKey() string {
+	return p.GetString("api_key")
+}
+
+func (p *DigiflazzCredentials) SetApiKey(apiKey string) {
+	p.Set("api_key", apiKey)
+}
+
+func (p *DigiflazzCredentials) Testing() bool {
+	return p.GetBool("testing")
+}
+
+func (p *DigiflazzCredentials) SetTesting(testing bool) {
+	p.Set("testing", testing)
+}
+
+func (p *DigiflazzCredentials) WebhookTokenHash() string {
+	return p.GetString("webhook_token_hash")
+}
+
+func (p *DigiflazzCredentials) SetWebhookTokenHash(webhookTokenHash string) {
+	p.Set("webhook_token_hash", webhookTokenHash)
+}
+
+func (p *DigiflazzCredentials) WebhookSecret() string {
+	return p.GetString("webhook_secret")
+}
+
+func (p *DigiflazzCredentials) SetWebhookSecret(webhookSecret string) {
+	p.Set("webhook_secret", webhookSecret)
+}
+
+func (p *DigiflazzCredentials) IsActive() bool {
+	return p.GetBool("is_active")
+}
+
+func (p *DigiflazzCredentials) SetIsActive(isActive bool) {
+	p.Set("is_active", isActive)
+}
+
+func (p *DigiflazzCredentials) Created() types.DateTime {
+	return p.GetDateTime("created")
+}
+
+func (p *DigiflazzCredentials) SetCreated(created types.DateTime) {
+	p.Set("created", created)
+}
+
+func (p *DigiflazzCredentials) Updated() types.DateTime {
+	return p.GetDateTime("updated")
+}
+
+func (p *DigiflazzCredentials) SetUpdated(updated types.DateTime) {
+	p.Set("updated", updated)
+}
+
+type DigiflazzProducts struct {
+	core.BaseRecordProxy
+}
+
+func (p *DigiflazzProducts) CollectionName() string {
+	return "digiflazz_products"
+}
+
+func (p *DigiflazzProducts) FamilyId() *Families {
+	var proxy *Families
+	if rel := p.ExpandedOne("family_id"); rel != nil {
+		proxy = &Families{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *DigiflazzProducts) SetFamilyId(familyId *Families) {
+	var id string
+	if familyId != nil {
+		id = familyId.Id
+	}
+	p.Record.Set("family_id", id)
+	e := p.Expand()
+	if familyId != nil {
+		e["family_id"] = familyId.Record
+	} else {
+		delete(e, "family_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *DigiflazzProducts) CredentialId() *DigiflazzCredentials {
+	var proxy *DigiflazzCredentials
+	if rel := p.ExpandedOne("credential_id"); rel != nil {
+		proxy = &DigiflazzCredentials{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *DigiflazzProducts) SetCredentialId(credentialId *DigiflazzCredentials) {
+	var id string
+	if credentialId != nil {
+		id = credentialId.Id
+	}
+	p.Record.Set("credential_id", id)
+	e := p.Expand()
+	if credentialId != nil {
+		e["credential_id"] = credentialId.Record
+	} else {
+		delete(e, "credential_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *DigiflazzProducts) ProductName() string {
+	return p.GetString("product_name")
+}
+
+func (p *DigiflazzProducts) SetProductName(productName string) {
+	p.Set("product_name", productName)
+}
+
+func (p *DigiflazzProducts) Category() string {
+	return p.GetString("category")
+}
+
+func (p *DigiflazzProducts) SetCategory(category string) {
+	p.Set("category", category)
+}
+
+func (p *DigiflazzProducts) Brand() string {
+	return p.GetString("brand")
+}
+
+func (p *DigiflazzProducts) SetBrand(brand string) {
+	p.Set("brand", brand)
+}
+
+func (p *DigiflazzProducts) Type() string {
+	return p.GetString("type")
+}
+
+func (p *DigiflazzProducts) SetType(type_ string) {
+	p.Set("type", type_)
+}
+
+func (p *DigiflazzProducts) BuyerSkuCode() string {
+	return p.GetString("buyer_sku_code")
+}
+
+func (p *DigiflazzProducts) SetBuyerSkuCode(buyerSkuCode string) {
+	p.Set("buyer_sku_code", buyerSkuCode)
+}
+
+func (p *DigiflazzProducts) Price() float64 {
+	return p.GetFloat("price")
+}
+
+func (p *DigiflazzProducts) SetPrice(price float64) {
+	p.Set("price", price)
+}
+
+func (p *DigiflazzProducts) Admin() float64 {
+	return p.GetFloat("admin")
+}
+
+func (p *DigiflazzProducts) SetAdmin(admin float64) {
+	p.Set("admin", admin)
+}
+
+func (p *DigiflazzProducts) BuyerProductStatus() string {
+	return p.GetString("buyer_product_status")
+}
+
+func (p *DigiflazzProducts) SetBuyerProductStatus(buyerProductStatus string) {
+	p.Set("buyer_product_status", buyerProductStatus)
+}
+
+func (p *DigiflazzProducts) SellerProductStatus() string {
+	return p.GetString("seller_product_status")
+}
+
+func (p *DigiflazzProducts) SetSellerProductStatus(sellerProductStatus string) {
+	p.Set("seller_product_status", sellerProductStatus)
+}
+
+func (p *DigiflazzProducts) Stock() float64 {
+	return p.GetFloat("stock")
+}
+
+func (p *DigiflazzProducts) SetStock(stock float64) {
+	p.Set("stock", stock)
+}
+
+func (p *DigiflazzProducts) Multi() bool {
+	return p.GetBool("multi")
+}
+
+func (p *DigiflazzProducts) SetMulti(multi bool) {
+	p.Set("multi", multi)
+}
+
+func (p *DigiflazzProducts) Desc() string {
+	return p.GetString("desc")
+}
+
+func (p *DigiflazzProducts) SetDesc(desc string) {
+	p.Set("desc", desc)
+}
+
+func (p *DigiflazzProducts) Provider() string {
+	return p.GetString("provider")
+}
+
+func (p *DigiflazzProducts) SetProvider(provider string) {
+	p.Set("provider", provider)
+}
+
+func (p *DigiflazzProducts) IsPrepaid() bool {
+	return p.GetBool("is_prepaid")
+}
+
+func (p *DigiflazzProducts) SetIsPrepaid(isPrepaid bool) {
+	p.Set("is_prepaid", isPrepaid)
+}
+
+func (p *DigiflazzProducts) Created() types.DateTime {
+	return p.GetDateTime("created")
+}
+
+func (p *DigiflazzProducts) SetCreated(created types.DateTime) {
+	p.Set("created", created)
+}
+
+func (p *DigiflazzProducts) Updated() types.DateTime {
+	return p.GetDateTime("updated")
+}
+
+func (p *DigiflazzProducts) SetUpdated(updated types.DateTime) {
+	p.Set("updated", updated)
+}
+
+type StatusSelectType int
+
+const (
+	Inquiry StatusSelectType = iota
+	Pending
+	Processing
+	Success
+	Failed
+	Cancelled
+)
+
+var zzStatusSelectTypeSelectNameMap = map[string]StatusSelectType{
+	"inquiry":    0,
+	"pending":    1,
+	"processing": 2,
+	"success":    3,
+	"failed":     4,
+	"cancelled":  5,
+}
+var zzStatusSelectTypeSelectIotaMap = map[StatusSelectType]string{
+	0: "inquiry",
+	1: "pending",
+	2: "processing",
+	3: "success",
+	4: "failed",
+	5: "cancelled",
+}
+
+type DigiflazzOrders struct {
+	core.BaseRecordProxy
+}
+
+func (p *DigiflazzOrders) CollectionName() string {
+	return "digiflazz_orders"
+}
+
+func (p *DigiflazzOrders) FamilyId() *Families {
+	var proxy *Families
+	if rel := p.ExpandedOne("family_id"); rel != nil {
+		proxy = &Families{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *DigiflazzOrders) SetFamilyId(familyId *Families) {
+	var id string
+	if familyId != nil {
+		id = familyId.Id
+	}
+	p.Record.Set("family_id", id)
+	e := p.Expand()
+	if familyId != nil {
+		e["family_id"] = familyId.Record
+	} else {
+		delete(e, "family_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *DigiflazzOrders) CreatedBy() *Users {
+	var proxy *Users
+	if rel := p.ExpandedOne("created_by"); rel != nil {
+		proxy = &Users{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *DigiflazzOrders) SetCreatedBy(createdBy *Users) {
+	var id string
+	if createdBy != nil {
+		id = createdBy.Id
+	}
+	p.Record.Set("created_by", id)
+	e := p.Expand()
+	if createdBy != nil {
+		e["created_by"] = createdBy.Record
+	} else {
+		delete(e, "created_by")
+	}
+	p.SetExpand(e)
+}
+
+func (p *DigiflazzOrders) RefId() string {
+	return p.GetString("ref_id")
+}
+
+func (p *DigiflazzOrders) SetRefId(refId string) {
+	p.Set("ref_id", refId)
+}
+
+func (p *DigiflazzOrders) BuyerSkuCode() string {
+	return p.GetString("buyer_sku_code")
+}
+
+func (p *DigiflazzOrders) SetBuyerSkuCode(buyerSkuCode string) {
+	p.Set("buyer_sku_code", buyerSkuCode)
+}
+
+func (p *DigiflazzOrders) CustomerNo() string {
+	return p.GetString("customer_no")
+}
+
+func (p *DigiflazzOrders) SetCustomerNo(customerNo string) {
+	p.Set("customer_no", customerNo)
+}
+
+func (p *DigiflazzOrders) ProductName() string {
+	return p.GetString("product_name")
+}
+
+func (p *DigiflazzOrders) SetProductName(productName string) {
+	p.Set("product_name", productName)
+}
+
+func (p *DigiflazzOrders) Category() string {
+	return p.GetString("category")
+}
+
+func (p *DigiflazzOrders) SetCategory(category string) {
+	p.Set("category", category)
+}
+
+func (p *DigiflazzOrders) Status() StatusSelectType {
+	option := p.GetString("status")
+	i, ok := zzStatusSelectTypeSelectNameMap[option]
+	if !ok {
+		panic("Unknown select value")
+	}
+	return i
+}
+
+func (p *DigiflazzOrders) SetStatus(status StatusSelectType) {
+	i, ok := zzStatusSelectTypeSelectIotaMap[status]
+	if !ok {
+		panic("Unknown select value")
+	}
+	p.Set("status", i)
+}
+
+func (p *DigiflazzOrders) Price() float64 {
+	return p.GetFloat("price")
+}
+
+func (p *DigiflazzOrders) SetPrice(price float64) {
+	p.Set("price", price)
+}
+
+func (p *DigiflazzOrders) Admin() float64 {
+	return p.GetFloat("admin")
+}
+
+func (p *DigiflazzOrders) SetAdmin(admin float64) {
+	p.Set("admin", admin)
+}
+
+func (p *DigiflazzOrders) Total() float64 {
+	return p.GetFloat("total")
+}
+
+func (p *DigiflazzOrders) SetTotal(total float64) {
+	p.Set("total", total)
+}
+
+func (p *DigiflazzOrders) Sn() string {
+	return p.GetString("sn")
+}
+
+func (p *DigiflazzOrders) SetSn(sn string) {
+	p.Set("sn", sn)
+}
+
+func (p *DigiflazzOrders) Message() string {
+	return p.GetString("message")
+}
+
+func (p *DigiflazzOrders) SetMessage(message string) {
+	p.Set("message", message)
+}
+
+func (p *DigiflazzOrders) Rc() string {
+	return p.GetString("rc")
+}
+
+func (p *DigiflazzOrders) SetRc(rc string) {
+	p.Set("rc", rc)
+}
+
+func (p *DigiflazzOrders) Payload() string {
+	return p.GetString("payload")
+}
+
+func (p *DigiflazzOrders) SetPayload(payload string) {
+	p.Set("payload", payload)
+}
+
+func (p *DigiflazzOrders) Response() string {
+	return p.GetString("response")
+}
+
+func (p *DigiflazzOrders) SetResponse(response string) {
+	p.Set("response", response)
+}
+
+func (p *DigiflazzOrders) TransactionId() string {
+	return p.GetString("transaction_id")
+}
+
+func (p *DigiflazzOrders) SetTransactionId(transactionId string) {
+	p.Set("transaction_id", transactionId)
+}
+
+func (p *DigiflazzOrders) IsPrepaid() bool {
+	return p.GetBool("is_prepaid")
+}
+
+func (p *DigiflazzOrders) SetIsPrepaid(isPrepaid bool) {
+	p.Set("is_prepaid", isPrepaid)
+}
+
+func (p *DigiflazzOrders) Created() types.DateTime {
+	return p.GetDateTime("created")
+}
+
+func (p *DigiflazzOrders) SetCreated(created types.DateTime) {
+	p.Set("created", created)
+}
+
+func (p *DigiflazzOrders) Updated() types.DateTime {
+	return p.GetDateTime("updated")
+}
+
+func (p *DigiflazzOrders) SetUpdated(updated types.DateTime) {
+	p.Set("updated", updated)
+}
+
+type EventTypeSelectType int
+
+const (
+	Topup EventTypeSelectType = iota
+	Inquiry2
+	Pay
+	Status
+	Deposit
+	Webhook
+	Error
+)
+
+var zzEventTypeSelectTypeSelectNameMap = map[string]EventTypeSelectType{
+	"topup":   0,
+	"inquiry": 1,
+	"pay":     2,
+	"status":  3,
+	"deposit": 4,
+	"webhook": 5,
+	"error":   6,
+}
+var zzEventTypeSelectTypeSelectIotaMap = map[EventTypeSelectType]string{
+	0: "topup",
+	1: "inquiry",
+	2: "pay",
+	3: "status",
+	4: "deposit",
+	5: "webhook",
+	6: "error",
+}
+
+type DigiflazzEvents struct {
+	core.BaseRecordProxy
+}
+
+func (p *DigiflazzEvents) CollectionName() string {
+	return "digiflazz_events"
+}
+
+func (p *DigiflazzEvents) OrderId() *DigiflazzOrders {
+	var proxy *DigiflazzOrders
+	if rel := p.ExpandedOne("order_id"); rel != nil {
+		proxy = &DigiflazzOrders{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *DigiflazzEvents) SetOrderId(orderId *DigiflazzOrders) {
+	var id string
+	if orderId != nil {
+		id = orderId.Id
+	}
+	p.Record.Set("order_id", id)
+	e := p.Expand()
+	if orderId != nil {
+		e["order_id"] = orderId.Record
+	} else {
+		delete(e, "order_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *DigiflazzEvents) EventType() EventTypeSelectType {
+	option := p.GetString("event_type")
+	i, ok := zzEventTypeSelectTypeSelectNameMap[option]
+	if !ok {
+		panic("Unknown select value")
+	}
+	return i
+}
+
+func (p *DigiflazzEvents) SetEventType(eventType EventTypeSelectType) {
+	i, ok := zzEventTypeSelectTypeSelectIotaMap[eventType]
+	if !ok {
+		panic("Unknown select value")
+	}
+	p.Set("event_type", i)
+}
+
+func (p *DigiflazzEvents) StatusBefore() string {
+	return p.GetString("status_before")
+}
+
+func (p *DigiflazzEvents) SetStatusBefore(statusBefore string) {
+	p.Set("status_before", statusBefore)
+}
+
+func (p *DigiflazzEvents) StatusAfter() string {
+	return p.GetString("status_after")
+}
+
+func (p *DigiflazzEvents) SetStatusAfter(statusAfter string) {
+	p.Set("status_after", statusAfter)
+}
+
+func (p *DigiflazzEvents) Payload() string {
+	return p.GetString("payload")
+}
+
+func (p *DigiflazzEvents) SetPayload(payload string) {
+	p.Set("payload", payload)
+}
+
+func (p *DigiflazzEvents) Response() string {
+	return p.GetString("response")
+}
+
+func (p *DigiflazzEvents) SetResponse(response string) {
+	p.Set("response", response)
+}
+
+func (p *DigiflazzEvents) Source() string {
+	return p.GetString("source")
+}
+
+func (p *DigiflazzEvents) SetSource(source string) {
+	p.Set("source", source)
+}
+
+func (p *DigiflazzEvents) Created() types.DateTime {
+	return p.GetDateTime("created")
+}
+
+func (p *DigiflazzEvents) SetCreated(created types.DateTime) {
+	p.Set("created", created)
+}
+
+func (p *DigiflazzEvents) Updated() types.DateTime {
+	return p.GetDateTime("updated")
+}
+
+func (p *DigiflazzEvents) SetUpdated(updated types.DateTime) {
+	p.Set("updated", updated)
+}
