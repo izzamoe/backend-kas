@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"testing"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
@@ -281,8 +282,9 @@ func TestDigiflazzPascaOrderHandler_PayAndCheckStatus(t *testing.T) {
 			Method:         http.MethodPost,
 			URL:            "/api/digiflazz/orders/order1/check-status",
 			Headers:        map[string]string{"Authorization": "Bearer " + token},
-			ExpectedStatus: http.StatusNotFound,
-			TestAppFactory: func(t testing.TB) *tests.TestApp { return app },
+			ExpectedStatus:  http.StatusNotFound,
+			ExpectedContent: []string{`"status":404`},
+			TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
 				bindDigiflazzOrderRoutes(svrApp, e, svc)
 			},
@@ -394,6 +396,226 @@ func TestDigiflazzPascaOrderHandler_AmountChangeMapsToBadRequest(t *testing.T) {
 		Headers:         map[string]string{"Authorization": "Bearer " + token},
 		ExpectedStatus:  http.StatusBadRequest,
 		ExpectedContent: []string{`fresh inquiry`, `"status":400`},
+		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			bindDigiflazzOrderRoutes(svrApp, e, svc)
+		},
+	}).Test(t)
+}
+
+// ── T15: Order creation simplification tests ─────────────────────────────────
+
+var uuidV4Re = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+
+func TestDigiflazzOrderHandler_MinimalBody(t *testing.T) {
+	app := newDigiflazzProductTestApp(t)
+	ownerToken, _, _, _ := seedDigiflazzProductTestData(t, app)
+	body, _ := json.Marshal(map[string]any{"buyer_sku_code": "TSEL10", "customer_no": "08111222333"})
+	svc := &fakeOrderService{
+		createOrder: func(ctx context.Context, fID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+			return &digiflazzdomain.OrderDTO{
+				ID: "ord-minimal", FamilyID: fID, ProductCode: req.BuyerSKUCode,
+				ProductName: "Telkomsel 10K", ProductBrand: "Telkomsel", ProductCategory: "Pulsa",
+				CustomerNo: req.CustomerNo, Status: digiflazzdomain.OrderStatusProcessing,
+			}, nil
+		},
+	}
+	(&tests.ApiScenario{
+		Name: "minimal body - 201 with product fields populated",
+		Method: http.MethodPost, URL: "/api/digiflazz/orders", Body: bytes.NewReader(body),
+		Headers:        map[string]string{"Authorization": "Bearer " + ownerToken, "Content-Type": "application/json"},
+		ExpectedStatus: http.StatusCreated,
+		ExpectedContent: []string{
+			`"id":"ord-minimal"`, `"product_code":"TSEL10"`, `"product_name":"Telkomsel 10K"`,
+			`"product_brand":"Telkomsel"`, `"product_category":"Pulsa"`, `"customer_no":"08111222333"`,
+		},
+		TestAppFactory: func(t testing.TB) *tests.TestApp { return app },
+		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			bindDigiflazzOrderRoutes(svrApp, e, svc)
+		},
+	}).Test(t)
+}
+
+func TestDigiflazzOrderHandler_RefIDIsUUIDv4(t *testing.T) {
+	app := newDigiflazzProductTestApp(t)
+	ownerToken, _, _, _ := seedDigiflazzProductTestData(t, app)
+	const testRefID = "550e8400-e29b-41d4-a716-446655440000"
+	svc := &fakeOrderService{
+		createOrder: func(ctx context.Context, fID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+			return &digiflazzdomain.OrderDTO{
+				ID: "ord-uuid", FamilyID: fID, ProductCode: req.BuyerSKUCode,
+				CustomerNo: req.CustomerNo, RefID: testRefID, Status: digiflazzdomain.OrderStatusProcessing,
+			}, nil
+		},
+	}
+	(&tests.ApiScenario{
+		Name: "ref_id is UUID v4 format",
+		Method: http.MethodPost, URL: "/api/digiflazz/orders",
+		Body:           bytes.NewReader([]byte(`{"buyer_sku_code":"TSEL10","customer_no":"0811"}`)),
+		Headers:        map[string]string{"Authorization": "Bearer " + ownerToken, "Content-Type": "application/json"},
+		ExpectedStatus: http.StatusCreated,
+		ExpectedContent: []string{`"ref_id":"550e8400-e29b-41d4-a716-446655440000"`},
+		TestAppFactory: func(t testing.TB) *tests.TestApp { return app },
+		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			bindDigiflazzOrderRoutes(svrApp, e, svc)
+		},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			if !uuidV4Re.MatchString(testRefID) {
+				t.Errorf("ref_id %q is not UUID v4 format", testRefID)
+			}
+		},
+	}).Test(t)
+}
+
+func TestDigiflazzOrderHandler_CreatedByIsAuthUser(t *testing.T) {
+	app := newDigiflazzProductTestApp(t)
+	ownerToken, _, _, ownerID := seedDigiflazzProductTestData(t, app)
+	var capturedCreatedBy string
+	svc := &fakeOrderService{
+		createOrder: func(ctx context.Context, fID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+			capturedCreatedBy = createdBy
+			return &digiflazzdomain.OrderDTO{
+				ID: "ord-creator", FamilyID: fID, CreatedBy: createdBy,
+				ProductCode: req.BuyerSKUCode, CustomerNo: req.CustomerNo, Status: digiflazzdomain.OrderStatusProcessing,
+			}, nil
+		},
+	}
+	(&tests.ApiScenario{
+		Name: "created_by equals auth user id",
+		Method: http.MethodPost, URL: "/api/digiflazz/orders",
+		Body:            bytes.NewReader([]byte(`{"buyer_sku_code":"TSEL10","customer_no":"0811"}`)),
+		Headers:         map[string]string{"Authorization": "Bearer " + ownerToken, "Content-Type": "application/json"},
+		ExpectedStatus:  http.StatusCreated,
+		ExpectedContent: []string{`"id":"ord-creator"`},
+		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			bindDigiflazzOrderRoutes(svrApp, e, svc)
+		},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			if capturedCreatedBy != ownerID {
+				t.Errorf("expected createdBy=%s, got %s", ownerID, capturedCreatedBy)
+			}
+		},
+	}).Test(t)
+}
+
+func TestDigiflazzOrderHandler_FamilyIDFromMiddleware(t *testing.T) {
+	app := newDigiflazzProductTestApp(t)
+	ownerToken, _, familyID, _ := seedDigiflazzProductTestData(t, app)
+	var capturedFamilyID string
+	svc := &fakeOrderService{
+		createOrder: func(ctx context.Context, fID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+			capturedFamilyID = fID
+			return &digiflazzdomain.OrderDTO{
+				ID: "ord-family", FamilyID: fID,
+				ProductCode: req.BuyerSKUCode, CustomerNo: req.CustomerNo, Status: digiflazzdomain.OrderStatusProcessing,
+			}, nil
+		},
+	}
+	(&tests.ApiScenario{
+		Name: "family_id comes from middleware context",
+		Method: http.MethodPost, URL: "/api/digiflazz/orders",
+		Body:            bytes.NewReader([]byte(`{"buyer_sku_code":"TSEL10","customer_no":"0811"}`)),
+		Headers:         map[string]string{"Authorization": "Bearer " + ownerToken, "Content-Type": "application/json"},
+		ExpectedStatus:  http.StatusCreated,
+		ExpectedContent: []string{`"id":"ord-family"`},
+		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			bindDigiflazzOrderRoutes(svrApp, e, svc)
+		},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			if capturedFamilyID != familyID {
+				t.Errorf("expected familyID=%s from middleware, got %s", familyID, capturedFamilyID)
+			}
+		},
+	}).Test(t)
+}
+
+func TestDigiflazzOrderHandler_UnknownSKU(t *testing.T) {
+	app := newDigiflazzProductTestApp(t)
+	ownerToken, _, _, _ := seedDigiflazzProductTestData(t, app)
+	svc := &fakeOrderService{
+		createOrder: func(ctx context.Context, fID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+			return nil, digiflazzdomain.ErrProductNotFound
+		},
+	}
+	(&tests.ApiScenario{
+		Name: "unknown SKU returns 400 product not found",
+		Method: http.MethodPost, URL: "/api/digiflazz/orders",
+		Body:            bytes.NewReader([]byte(`{"buyer_sku_code":"UNKNOWN_SKU","customer_no":"0811"}`)),
+		Headers:         map[string]string{"Authorization": "Bearer " + ownerToken, "Content-Type": "application/json"},
+		ExpectedStatus:  http.StatusBadRequest,
+		ExpectedContent: []string{`"status":400`, `not found for your account`},
+		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			bindDigiflazzOrderRoutes(svrApp, e, svc)
+		},
+	}).Test(t)
+}
+
+func TestDigiflazzOrderHandler_CrossFamilySKU(t *testing.T) {
+	app := newDigiflazzProductTestApp(t)
+	_, _, familyAID, _ := seedDigiflazzProductTestData(t, app)
+	ownerTokenB, _, _, _ := seedDigiflazzProductTestData(t, app)
+	svc := &fakeOrderService{
+		createOrder: func(ctx context.Context, fID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+			if fID != familyAID {
+				return nil, digiflazzdomain.ErrProductNotFound
+			}
+			return &digiflazzdomain.OrderDTO{ID: "ord-x", FamilyID: fID, Status: digiflazzdomain.OrderStatusProcessing}, nil
+		},
+	}
+	(&tests.ApiScenario{
+		Name: "cross-family SKU returns 400 product not found",
+		Method: http.MethodPost, URL: "/api/digiflazz/orders",
+		Body:            bytes.NewReader([]byte(`{"buyer_sku_code":"FAMILY_A_SKU","customer_no":"0811"}`)),
+		Headers:         map[string]string{"Authorization": "Bearer " + ownerTokenB, "Content-Type": "application/json"},
+		ExpectedStatus:  http.StatusBadRequest,
+		ExpectedContent: []string{`"status":400`, `not found for your account`},
+		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			bindDigiflazzOrderRoutes(svrApp, e, svc)
+		},
+	}).Test(t)
+}
+
+func TestDigiflazzOrderHandler_EMoneyWithoutAmount(t *testing.T) {
+	app := newDigiflazzProductTestApp(t)
+	ownerToken, _, _, _ := seedDigiflazzProductTestData(t, app)
+	svc := &fakeOrderService{
+		createOrder: func(ctx context.Context, fID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+			return nil, digiflazzdomain.ErrAmountRequired
+		},
+	}
+	(&tests.ApiScenario{
+		Name: "e-money without amount returns 400",
+		Method: http.MethodPost, URL: "/api/digiflazz/orders",
+		Body:            bytes.NewReader([]byte(`{"buyer_sku_code":"OVO50000","customer_no":"08111222333"}`)),
+		Headers:         map[string]string{"Authorization": "Bearer " + ownerToken, "Content-Type": "application/json"},
+		ExpectedStatus:  http.StatusBadRequest,
+		ExpectedContent: []string{`"status":400`, `multiple of 1000`},
+		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			bindDigiflazzOrderRoutes(svrApp, e, svc)
+		},
+	}).Test(t)
+}
+
+func TestDigiflazzOrderHandler_SAMSATWithoutIDPelanggan2(t *testing.T) {
+	app := newDigiflazzProductTestApp(t)
+	ownerToken, _, _, _ := seedDigiflazzProductTestData(t, app)
+	svc := &fakeOrderService{
+		createOrder: func(ctx context.Context, fID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+			return nil, digiflazzdomain.ErrIDPelanggan2Required
+		},
+	}
+	(&tests.ApiScenario{
+		Name: "SAMSAT without id_pelanggan2 returns 400",
+		Method: http.MethodPost, URL: "/api/digiflazz/orders",
+		Body:            bytes.NewReader([]byte(`{"buyer_sku_code":"SAMSATJKT","customer_no":"B1234XYZ"}`)),
+		Headers:         map[string]string{"Authorization": "Bearer " + ownerToken, "Content-Type": "application/json"},
+		ExpectedStatus:  http.StatusBadRequest,
+		ExpectedContent: []string{`"status":400`, `NIK`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
 			bindDigiflazzOrderRoutes(svrApp, e, svc)
