@@ -31,6 +31,30 @@ type WebhookPayload struct {
 	Desc           json.RawMessage   `json:"desc,omitempty"`
 }
 
+type webhookPayloadAlias WebhookPayload
+
+func (p *WebhookPayload) UnmarshalJSON(data []byte) error {
+	type envelope struct {
+		Data *webhookPayloadAlias `json:"data"`
+		webhookPayloadAlias
+	}
+
+	var outer envelope
+	if err := json.Unmarshal(data, &outer); err != nil {
+		return err
+	}
+
+	if outer.Data != nil {
+		*p = WebhookPayload(*outer.Data)
+		if p.RefID != "" {
+			return nil
+		}
+	}
+
+	*p = WebhookPayload(outer.webhookPayloadAlias)
+	return nil
+}
+
 type WebhookHeaders struct {
 	Event     string
 	Signature string
