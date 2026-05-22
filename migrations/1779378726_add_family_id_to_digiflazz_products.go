@@ -64,16 +64,12 @@ func init() {
 			return err
 		}
 
-		rows, err := app.DB().NewQuery(`SELECT COUNT(*) AS count FROM sqlite_master WHERE type='index' AND name='idx_digiflazz_credentials_family_unique'`).Rows()
+		rows, err := app.DB().NewQuery(`SELECT name FROM sqlite_master WHERE type='index' AND name='idx_digiflazz_credentials_family_unique'`).Rows()
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
-		idxExists := false
-		for rows.Next() {
-			idxExists = true
-			break
-		}
+		idxExists := rows.Next()
 		if !idxExists {
 			if _, err := app.DB().NewQuery(`DELETE FROM digiflazz_credentials WHERE id NOT IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY family_id ORDER BY created DESC, id DESC) AS rn FROM digiflazz_credentials) WHERE rn = 1)`).Execute(); err != nil {
 				return err
