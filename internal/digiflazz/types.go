@@ -5,6 +5,26 @@ import (
 	"time"
 )
 
+type ProductStatus string
+
+func (s *ProductStatus) UnmarshalJSON(data []byte) error {
+	var b bool
+	if err := json.Unmarshal(data, &b); err == nil {
+		if b {
+			*s = "active"
+		} else {
+			*s = "inactive"
+		}
+		return nil
+	}
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+	*s = ProductStatus(str)
+	return nil
+}
+
 const (
 	DefaultBaseURL = "https://api.digiflazz.com/v1"
 	DefaultTimeout = 30 * time.Second
@@ -112,9 +132,9 @@ type PriceListPrepaidItem struct {
 	SellerName          string  `json:"seller_name"`
 	Price               float64 `json:"price"`
 	BuyerSKUCode        string  `json:"buyer_sku_code"`
-	BuyerProductStatus  string  `json:"buyer_product_status"`
-	SellerProductStatus string  `json:"seller_product_status"`
-	UnlimitedStock      bool    `json:"unlimited_stock"`
+	BuyerProductStatus  ProductStatus `json:"buyer_product_status"`
+	SellerProductStatus ProductStatus `json:"seller_product_status"`
+	UnlimitedStock      bool          `json:"unlimited_stock"`
 	Stock               int     `json:"stock"`
 	Multi               bool    `json:"multi"`
 	StartCutOff         string  `json:"start_cut_off"`
@@ -130,9 +150,9 @@ type PriceListPascaItem struct {
 	Admin               float64 `json:"admin"`
 	Commission          float64 `json:"commission"`
 	BuyerSKUCode        string  `json:"buyer_sku_code"`
-	BuyerProductStatus  string  `json:"buyer_product_status"`
-	SellerProductStatus string  `json:"seller_product_status"`
-	Desc                string  `json:"desc"`
+	BuyerProductStatus  ProductStatus `json:"buyer_product_status"`
+	SellerProductStatus ProductStatus `json:"seller_product_status"`
+	Desc                string        `json:"desc"`
 }
 
 type DepositResponse struct {

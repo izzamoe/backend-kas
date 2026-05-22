@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+
+	digiflazzdomain "kas/internal/domain/digiflazz"
 )
 
 type DigiflazzClient interface {
@@ -56,6 +59,11 @@ type envelope struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type dataErrorResponse struct {
+	RC      string `json:"rc"`
+	Message string `json:"message"`
+}
+
 func (c *client) post(ctx context.Context, path string, body any, out any) error {
 	b, err := json.Marshal(body)
 	if err != nil {
@@ -94,10 +102,49 @@ func (c *client) post(ctx context.Context, path string, body any, out any) error
 	if len(env.Data) == 0 {
 		return nil
 	}
+
 	if err := json.Unmarshal(env.Data, out); err != nil {
+		if len(env.Data) > 0 && env.Data[0] == '{' {
+			var apiErr dataErrorResponse
+			if json.Unmarshal(env.Data, &apiErr) == nil && apiErr.Message != "" {
+				return digiflazzdomain.MapDigiflazzRC(apiErr.RC, apiErr.Message)
+			}
+		}
 		return fmt.Errorf("digiflazz: unmarshal data: %w", err)
 	}
+	if rc := strings.TrimSpace(getResponseRC(out)); rc != "" && rc != "00" {
+		if _, ok := out.(*TransactionResponse); ok && rc == "03" {
+			return nil
+		}
+		if mapped := digiflazzdomain.MapDigiflazzRC(rc, getResponseMessage(out)); mapped != nil {
+			return mapped
+		}
+	}
 	return nil
+}
+
+func getResponseRC(v any) string {
+	switch resp := v.(type) {
+	case *DepositResponse:
+		return resp.Rc
+	case *TransactionResponse:
+		return resp.Rc
+	case *InquiryPLNResponse:
+		return resp.Rc
+	default:
+		return ""
+	}
+}
+
+func getResponseMessage(v any) string {
+	switch resp := v.(type) {
+	case *TransactionResponse:
+		return resp.Message
+	case *InquiryPLNResponse:
+		return resp.Message
+	default:
+		return ""
+	}
 }
 
 func (c *client) CekSaldo(ctx context.Context) (*CekSaldoResponse, error) {
