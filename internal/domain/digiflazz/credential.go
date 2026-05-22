@@ -15,22 +15,6 @@ type CredentialDTO struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
-type CreateCredentialRequest struct {
-	FamilyID      string `json:"family_id"`
-	Username      string `json:"username"`
-	APIKey        string `json:"api_key"`
-	WebhookSecret string `json:"webhook_secret,omitempty"`
-	Testing       bool   `json:"testing,omitempty"`
-}
-
-type UpdateCredentialRequest struct {
-	Username      *string `json:"username,omitempty"`
-	APIKey        *string `json:"api_key,omitempty"`
-	WebhookSecret *string `json:"webhook_secret,omitempty"`
-	Testing       *bool   `json:"testing,omitempty"`
-	IsActive      *bool   `json:"is_active,omitempty"`
-}
-
 type BalanceResponse struct {
 	FamilyID string  `json:"family_id"`
 	Balance  float64 `json:"balance"`
