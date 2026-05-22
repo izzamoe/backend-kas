@@ -55,7 +55,7 @@ type UserExpand struct {
 // CreateTransactionRequest untuk request body
 type CreateTransactionRequest struct {
 	CategoryID string          `json:"category_id" validate:"required"`
-	Type       TransactionType `json:"type" validate:"required,oneof=income expense"`
+	Type       TransactionType `json:"type" validate:"required,oneof=income expense" enums:"income,expense"`
 	Amount     float64         `json:"amount" validate:"required,gt=0"`
 	Note       string          `json:"note"`
 	Date       string          `json:"date" validate:"required"` // ISO format
@@ -64,7 +64,7 @@ type CreateTransactionRequest struct {
 // UpdateTransactionRequest untuk update
 type UpdateTransactionRequest struct {
 	CategoryID string          `json:"category_id,omitempty"`
-	Type       TransactionType `json:"type,omitempty" validate:"omitempty,oneof=income expense"`
+	Type       TransactionType `json:"type,omitempty" validate:"omitempty,oneof=income expense" enums:"income,expense"`
 	Amount     float64         `json:"amount,omitempty"`
 	Note       string          `json:"note,omitempty"`
 	Date       string          `json:"date,omitempty"`
@@ -77,4 +77,17 @@ type TransactionListResponse struct {
 	PerPage    int               `json:"perPage"`
 	TotalItems int               `json:"totalItems"`
 	TotalPages int               `json:"totalPages"`
+}
+
+// FamilyTransactionListResponse wraps paginated family transaction list responses.
+type FamilyTransactionListResponse struct {
+	Items    []*TransactionDTO `json:"items"`
+	Page     int               `json:"page"`
+	PageSize int               `json:"pageSize"`
+}
+
+// BalanceResponse represents the balance for a family.
+type BalanceResponse struct {
+	FamilyID string  `json:"family_id"`
+	Balance  float64 `json:"balance"`
 }
