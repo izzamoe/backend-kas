@@ -1,544 +1,1740 @@
-openapi: 3.0.3
+basePath: /
+definitions:
+  digiflazz.BalanceResponse:
+    properties:
+      balance:
+        type: number
+      family_id:
+        type: string
+    type: object
+  digiflazz.CreateCredentialRequest:
+    properties:
+      api_key:
+        type: string
+      family_id:
+        type: string
+      testing:
+        type: boolean
+      username:
+        type: string
+      webhook_secret:
+        type: string
+    type: object
+  digiflazz.CreateOrderRequest:
+    properties:
+      amount:
+        type: number
+      credential_id:
+        type: string
+      customer_id2:
+        type: string
+      customer_name:
+        type: string
+      customer_no:
+        type: string
+      event_type:
+        $ref: '#/definitions/digiflazz.EventType'
+      family_id:
+        type: string
+      note:
+        type: string
+      order_type:
+        enum:
+        - prepaid
+        - postpaid
+        type: string
+      product_code:
+        type: string
+      ref_id:
+        type: string
+      year:
+        type: integer
+    type: object
+  digiflazz.CredentialDTO:
+    properties:
+      api_key_last4:
+        type: string
+      balance:
+        type: number
+      created_at:
+        type: string
+      family_id:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      testing:
+        type: boolean
+      updated_at:
+        type: string
+      username:
+        type: string
+      webhook_configured:
+        type: boolean
+    type: object
+  digiflazz.DigiflazzDepositResponse:
+    properties:
+      account_no:
+        type: string
+      amount:
+        type: number
+      bank:
+        type: string
+      notes:
+        type: string
+      payment_method:
+        type: string
+      rc:
+        type: string
+    type: object
+  digiflazz.EventType:
+    enum:
+    - topup
+    - inquiry
+    - pay
+    - status
+    - deposit
+    - webhook
+    - error
+    type: string
+    x-enum-varnames:
+    - EventTypeTopup
+    - EventTypeInquiry
+    - EventTypePay
+    - EventTypeStatus
+    - EventTypeDeposit
+    - EventTypeWebhook
+    - EventTypeError
+  digiflazz.OrderDTO:
+    properties:
+      admin:
+        type: number
+      buyer_last_saldo:
+        type: number
+      created_at:
+        type: string
+      created_by:
+        type: string
+      credential_id:
+        type: string
+      customer_name:
+        type: string
+      customer_no:
+        type: string
+      desc:
+        type: string
+      event_type:
+        $ref: '#/definitions/digiflazz.EventType'
+      family_id:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      periode:
+        type: string
+      price:
+        type: number
+      processed_at:
+        type: string
+      product_brand:
+        type: string
+      product_category:
+        type: string
+      product_code:
+        type: string
+      product_name:
+        type: string
+      rc:
+        type: string
+      ref_id:
+        type: string
+      requested_at:
+        type: string
+      selling_price:
+        type: number
+      sn:
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/digiflazz.OrderStatus'
+        enum:
+        - inquiry
+        - pending
+        - processing
+        - success
+        - failed
+        - cancelled
+      tele:
+        type: string
+      transaction_id:
+        type: string
+      updated_at:
+        type: string
+      wa:
+        type: string
+    type: object
+  digiflazz.OrderListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/digiflazz.OrderDTO'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+    type: object
+  digiflazz.OrderStatus:
+    enum:
+    - inquiry
+    - pending
+    - processing
+    - success
+    - failed
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - OrderStatusInquiry
+    - OrderStatusPending
+    - OrderStatusProcessing
+    - OrderStatusSuccess
+    - OrderStatusFailed
+    - OrderStatusCancelled
+  digiflazz.ProductDTO:
+    properties:
+      admin:
+        type: number
+      brand:
+        type: string
+      category:
+        type: string
+      code:
+        type: string
+      commission:
+        type: number
+      description:
+        type: string
+      end_cut_off:
+        type: string
+      last_updated:
+        type: string
+      multi:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      seller_name:
+        type: string
+      start_cut_off:
+        type: string
+      status:
+        type: string
+      stock:
+        type: integer
+      type:
+        type: string
+      unlimited_stock:
+        type: boolean
+    type: object
+  digiflazz.ProductListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/digiflazz.ProductDTO'
+        type: array
+      limit:
+        type: integer
+    type: object
+  digiflazz.RotateWebhookTokenResponse:
+    properties:
+      credential:
+        $ref: '#/definitions/digiflazz.CredentialDTO'
+      token:
+        type: string
+    type: object
+  digiflazz.UpdateCredentialRequest:
+    properties:
+      api_key:
+        type: string
+      is_active:
+        type: boolean
+      testing:
+        type: boolean
+      username:
+        type: string
+      webhook_secret:
+        type: string
+    type: object
+  domain.BalanceResponse:
+    properties:
+      balance:
+        type: number
+      family_id:
+        type: string
+    type: object
+  domain.CategoryBreakdownDTO:
+    description: CategoryBreakdownDTO represents a single category's financial breakdown
+    properties:
+      category_id:
+        example: cat1
+        type: string
+      category_name:
+        example: Makanan
+        type: string
+      color:
+        example: '#FF5733'
+        type: string
+      count:
+        description: Number of transactions
+        example: 12
+        type: integer
+      icon:
+        example: "\U0001F354"
+        type: string
+      total_amount:
+        example: 800000
+        type: number
+    type: object
+  domain.CategoryExpand:
+    properties:
+      color:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      is_default:
+        type: boolean
+      name:
+        type: string
+    type: object
+  domain.CreateFamilyRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  domain.CreateFamilyResponse:
+    properties:
+      family:
+        $ref: '#/definitions/domain.FamilyDTO'
+      member:
+        $ref: '#/definitions/domain.FamilyMemberDTO'
+    type: object
+  domain.CreateTransactionRequest:
+    properties:
+      amount:
+        type: number
+      category_id:
+        type: string
+      date:
+        description: ISO format
+        type: string
+      note:
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.TransactionType'
+        enum:
+        - income
+        - expense
+    required:
+    - amount
+    - category_id
+    - date
+    - type
+    type: object
+  domain.DashboardSummaryDTO:
+    description: DashboardSummaryDTO represents the dashboard summary response
+    properties:
+      family_name:
+        example: Keluarga Bahagia
+        type: string
+      monthly_expense:
+        description: This month's expense
+        example: 1800000
+        type: number
+      monthly_expense_change:
+        description: '% change from prev month'
+        example: -5.2
+        type: number
+      monthly_income:
+        description: This month's income
+        example: 5000000
+        type: number
+      monthly_income_change:
+        description: '% change from prev month'
+        example: 10.5
+        type: number
+      total_balance:
+        description: Overall balance
+        example: 12000000
+        type: number
+      user_name:
+        example: Budi
+        type: string
+    type: object
+  domain.FamilyDTO:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      invite_code:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.FamilyExpand:
+    properties:
+      id:
+        type: string
+      invite_code:
+        type: string
+      name:
+        type: string
+    type: object
+  domain.FamilyMemberDTO:
+    properties:
+      created_at:
+        type: string
+      family_id:
+        type: string
+      id:
+        type: string
+      role:
+        description: '@Enums owner, member'
+        enum:
+        - owner
+        - member
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  domain.FamilyTransactionListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/domain.TransactionDTO'
+        type: array
+      page:
+        type: integer
+      pageSize:
+        type: integer
+    type: object
+  domain.JoinFamilyRequest:
+    properties:
+      invite_code:
+        type: string
+    type: object
+  domain.MonthlyReportDTO:
+    description: MonthlyReportDTO represents the monthly financial report response
+    properties:
+      balance:
+        description: TotalIncome - TotalExpense
+        example: 3200000
+        type: number
+      expense_breakdown:
+        description: Breakdown per category for expenses
+        items:
+          $ref: '#/definitions/domain.CategoryBreakdownDTO'
+        type: array
+      family_id:
+        example: abc123
+        type: string
+      income_breakdown:
+        description: Breakdown per category for income
+        items:
+          $ref: '#/definitions/domain.CategoryBreakdownDTO'
+        type: array
+      month:
+        example: 4
+        type: integer
+      total_expense:
+        example: 1800000
+        type: number
+      total_income:
+        example: 5000000
+        type: number
+      year:
+        example: 2026
+        type: integer
+    type: object
+  domain.TransactionDTO:
+    properties:
+      amount:
+        type: number
+      category:
+        $ref: '#/definitions/domain.CategoryExpand'
+      category_id:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      creator:
+        $ref: '#/definitions/domain.UserExpand'
+      date:
+        type: string
+      family:
+        allOf:
+        - $ref: '#/definitions/domain.FamilyExpand'
+        description: Expanded fields (optional, populated when expand is used)
+      family_id:
+        type: string
+      id:
+        type: string
+      note:
+        type: string
+      type:
+        $ref: '#/definitions/domain.TransactionType'
+      updated_at:
+        type: string
+    type: object
+  domain.TransactionListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/domain.TransactionDTO'
+        type: array
+      page:
+        type: integer
+      perPage:
+        type: integer
+      totalItems:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  domain.TransactionType:
+    enum:
+    - income
+    - expense
+    type: string
+    x-enum-varnames:
+    - TransactionTypeIncome
+    - TransactionTypeExpense
+  domain.UpdateTransactionRequest:
+    properties:
+      amount:
+        type: number
+      category_id:
+        type: string
+      date:
+        type: string
+      note:
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.TransactionType'
+        enum:
+        - income
+        - expense
+    type: object
+  domain.UserExpand:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  handler.DepositRequest:
+    properties:
+      amount:
+        type: number
+      bank:
+        type: string
+    type: object
+  service.SyncResult:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+      postpaid_upserted:
+        type: integer
+      prepaid_upserted:
+        type: integer
+      total_upserted:
+        type: integer
+    type: object
 info:
+  contact: {}
+  description: API for managing family finances, including transactions, reports,
+    and Digiflazz integration.
   title: Uang Kas Keluarga API
-  description: API for managing family finances, including transactions and reports.
   version: 1.0.0
-servers:
-  - url: /
-    description: Current server
 paths:
-  /api/transactions:
-    get:
-      summary: List authenticated family transactions
-      description: Retrieve paginated transactions for the authenticated user's family within an inclusive date range. The family_id is derived from the bearer token and any family_id query value is ignored.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: start
-          in: query
-          required: true
-          description: Inclusive start date in YYYY-MM-DD format.
-          schema:
-            type: string
-            format: date
-            example: '2026-05-01'
-        - name: end
-          in: query
-          required: true
-          description: Inclusive end date in YYYY-MM-DD format.
-          schema:
-            type: string
-            format: date
-            example: '2026-05-31'
-        - name: page
-          in: query
-          description: Page number. Defaults to 1 when omitted or invalid.
-          schema:
-            type: integer
-            default: 1
-            minimum: 1
-        - name: perPage
-          in: query
-          description: Items per page. Defaults to 20 when omitted or outside 1-100.
-          schema:
-            type: integer
-            default: 20
-            minimum: 1
-            maximum: 100
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransactionListResponse'
-              example:
-                items:
-                  - id: tx123
-                    family_id: fam123
-                    created_by: user123
-                    category_id: cat123
-                    type: expense
-                    amount: 50000
-                    note: Belanja bulanan
-                    date: '2026-05-10T10:00:00Z'
-                    created_at: '2026-05-10T10:00:00Z'
-                    updated_at: '2026-05-10T10:00:00Z'
-                    category:
-                      id: cat123
-                      name: Makanan
-                      icon: 🍔
-                      color: '#FF5733'
-                      is_default: false
-                    creator:
-                      id: user123
-                      name: Budi
-                    family:
-                      id: fam123
-                      name: Keluarga Bahagia
-                page: 1
-                perPage: 20
-                totalItems: 1
-                totalPages: 1
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      summary: Create new transaction
-      description: Create a new income or expense transaction for a family.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateTransactionRequest'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransactionDTO'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /api/transactions/{id}:
-    get:
-      summary: Get transaction by ID
-      description: Retrieve details of a specific transaction.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransactionDTO'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    patch:
-      summary: Update transaction
-      description: Update an existing transaction.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateTransactionRequest'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransactionDTO'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+  /api/digiflazz/credential:
     delete:
-      summary: Delete transaction
-      description: Remove a transaction.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      description: Permanently removes the family's Digiflazz credential. Owner-only.
       responses:
-        '204':
+        "204":
           description: No Content
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /api/families/{familyId}/transactions:
-    get:
-      summary: Get family transactions
-      description: Retrieve paginated transactions for a specific family.
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
       security:
-        - bearerAuth: []
-      parameters:
-        - name: familyId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-            default: 20
+      - BearerAuth: []
+      summary: Delete Digiflazz credential
+      tags:
+      - digiflazz-credentials
+    get:
+      description: Returns credential metadata (no plaintext secrets) for the authenticated
+        family. Owner-only.
+      produces:
+      - application/json
       responses:
-        '200':
+        "200":
           description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/TransactionDTO'
-                  page:
-                    type: integer
-                  pageSize:
-                    type: integer
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
+          schema:
+            $ref: '#/definitions/digiflazz.CredentialDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Digiflazz credential
+      tags:
+      - digiflazz-credentials
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates credential fields. Omit a field to leave it unchanged.
+        Owner-only.
+      parameters:
+      - description: Fields to update — all optional
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/digiflazz.UpdateCredentialRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.CredentialDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update Digiflazz credential
+      tags:
+      - digiflazz-credentials
+    post:
+      consumes:
+      - application/json
+      description: Creates a new Digiflazz credential for the authenticated family.
+        Owner-only. The family_id is always taken from the auth context and cannot
+        be overridden via request body.
+      parameters:
+      - description: Credential fields — api_key is encrypted at rest; api_key_last4
+          is shown in responses
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/digiflazz.CreateCredentialRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/digiflazz.CredentialDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create Digiflazz credential
+      tags:
+      - digiflazz-credentials
+  /api/digiflazz/credential/balance:
+    get:
+      description: Fetches the current deposit balance from Digiflazz for the authenticated
+        family. Owner-only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.BalanceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Digiflazz balance
+      tags:
+      - digiflazz-credentials
+  /api/digiflazz/credential/rotate:
+    post:
+      description: Generates a new webhook token for the family's Digiflazz credential.
+        The new token is returned once — store it securely. Owner-only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.RotateWebhookTokenResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Rotate webhook token
+      tags:
+      - digiflazz-credentials
+  /api/digiflazz/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Initiates a deposit to the family's Digiflazz account. Returns
+        bank transfer details. Owner-only.
+      parameters:
+      - description: Deposit amount and destination bank
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.DepositRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.DigiflazzDepositResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create deposit request
+      tags:
+      - digiflazz-credentials
+  /api/digiflazz/orders:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of Digiflazz orders for the authenticated
+        user's family.
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size, 1-100 (default: 20)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.OrderListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List Digiflazz orders
+      tags:
+      - digiflazz-orders
+    post:
+      consumes:
+      - application/json
+      description: Creates a prepaid order or postpaid inquiry. Set order_type to
+        "prepaid" (default) or "postpaid" for a postpaid inquiry.
+      parameters:
+      - description: Order request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/digiflazz.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/digiflazz.OrderDTO'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a Digiflazz order
+      tags:
+      - digiflazz-orders
+  /api/digiflazz/orders/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a single Digiflazz order by ID for the authenticated user's
+        family.
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.OrderDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get a Digiflazz order
+      tags:
+      - digiflazz-orders
+  /api/digiflazz/orders/{id}/check-status:
+    post:
+      consumes:
+      - application/json
+      description: Polls Digiflazz for the latest status of a postpaid order and updates
+        it in the system.
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.OrderDTO'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Check and update Digiflazz order status
+      tags:
+      - digiflazz-orders
+  /api/digiflazz/orders/{id}/pay:
+    post:
+      consumes:
+      - application/json
+      description: Executes payment for an existing postpaid inquiry order.
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.OrderDTO'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Pay a postpaid inquiry order
+      tags:
+      - digiflazz-orders
+  /api/digiflazz/products:
+    get:
+      description: Returns a filtered list of available Digiflazz products. Accessible
+        by all family members.
+      parameters:
+      - description: Free-text search on product name or SKU code
+        in: query
+        name: query
+        type: string
+      - description: Filter by product category (e.g. Pulsa, Data, PLN)
+        in: query
+        name: category
+        type: string
+      - description: Filter by brand (e.g. Telkomsel, XL)
+        in: query
+        name: brand
+        type: string
+      - description: Filter by order type
+        enum:
+        - prepaid
+        - postpaid
+        in: query
+        name: type
+        type: string
+      - description: Filter by product status
+        enum:
+        - active
+        - inactive
+        in: query
+        name: status
+        type: string
+      - description: Number of results to return (1–200, default 50)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/digiflazz.ProductListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Search Digiflazz products
+      tags:
+      - digiflazz-products
+  /api/digiflazz/products/sync:
+    post:
+      description: Fetches the latest price list from Digiflazz and upserts it into
+        the local catalog. Owner-only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.SyncResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sync Digiflazz product catalog
+      tags:
+      - digiflazz-products
+  /api/families:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new family and assigns the authenticated user as the
+        owner.
+      parameters:
+      - description: Family creation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateFamilyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.CreateFamilyResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new family
+      tags:
+      - families
   /api/families/{familyId}/balance:
     get:
-      summary: Get family balance
-      description: Retrieve the current total balance for a family.
-      security:
-        - bearerAuth: []
+      consumes:
+      - application/json
+      description: Returns the current balance for a specific family
       parameters:
-        - name: familyId
-          in: path
-          required: true
-          schema:
-            type: string
+      - description: Family ID
+        in: path
+        name: familyId
+        required: true
+        type: string
+      produces:
+      - application/json
       responses:
-        '200':
+        "200":
           description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  family_id:
-                    type: string
-                  balance:
-                    type: number
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
+          schema:
+            $ref: '#/definitions/domain.BalanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get family balance
+      tags:
+      - transactions
+  /api/families/{familyId}/transactions:
+    get:
+      consumes:
+      - application/json
+      description: Returns paginated transactions for a specific family
+      parameters:
+      - description: Family ID
+        in: path
+        name: familyId
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.FamilyTransactionListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get family transactions
+      tags:
+      - transactions
+  /api/families/join:
+    post:
+      consumes:
+      - application/json
+      description: Adds the authenticated user to an existing family using an invite
+        code.
+      parameters:
+      - description: Join family payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain.JoinFamilyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.FamilyDTO'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Family not found (invalid invite code)
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Join an existing family
+      tags:
+      - families
+  /api/families/leave:
+    post:
+      consumes:
+      - application/json
+      description: Removes the authenticated user from their current family.
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Leave current family
+      tags:
+      - families
   /api/reports/monthly:
     get:
-      summary: Get monthly report
-      description: Retrieve financial report for a specific month, including total income, total expense, balance, and per-category breakdowns for both income and expenses.
-      security:
-        - bearerAuth: []
+      consumes:
+      - application/json
+      description: Returns a monthly financial report with income and expense breakdown
+        per category for the authenticated user's family.
       parameters:
-        - name: year
-          in: query
-          required: true
-          schema:
-            type: integer
-        - name: month
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 12
+      - description: Year (1900-2100)
+        in: query
+        name: year
+        required: true
+        type: integer
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      produces:
+      - application/json
       responses:
-        '200':
+        "200":
           description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MonthlyReportDTO'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
+          schema:
+            $ref: '#/definitions/domain.MonthlyReportDTO'
+        "400":
+          description: Bad request - missing or invalid parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get monthly financial report
+      tags:
+      - reports
   /api/reports/summary:
     get:
-      summary: Get dashboard summary
-      description: Retrieve high-level financial summary for the dashboard.
-      security:
-        - bearerAuth: []
+      consumes:
+      - application/json
+      description: Returns a dashboard summary with total balance, monthly income/expense,
+        and percentage change vs previous month. Defaults to current year/month if
+        not provided.
       parameters:
-        - name: year
-          in: query
-          schema:
-            type: integer
-        - name: month
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 12
+      - description: 'Year (1900-2100) — default: current year'
+        in: query
+        name: year
+        type: integer
+      - description: 'Month (1-12) — default: current month'
+        in: query
+        name: month
+        type: integer
+      produces:
+      - application/json
       responses:
-        '200':
+        "200":
           description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DashboardSummaryDTO'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-  responses:
-    BadRequest:
-      description: Bad Request
-      content:
-        application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    Unauthorized:
-      description: Unauthorized
-      content:
-        application/json:
+            $ref: '#/definitions/domain.DashboardSummaryDTO'
+        "400":
+          description: Bad request - invalid parameters
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    Forbidden:
-      description: Forbidden
-      content:
-        application/json:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    NotFound:
-      description: Not Found
-      content:
-        application/json:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
-  schemas:
-    TransactionDTO:
-      type: object
-      properties:
-        id:
-          type: string
-        family_id:
-          type: string
-        created_by:
-          type: string
-        category_id:
-          type: string
-        type:
-          type: string
-          enum: [income, expense]
-        amount:
-          type: number
-        note:
-          type: string
-        date:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        family:
-          $ref: '#/components/schemas/FamilyExpand'
-        category:
-          $ref: '#/components/schemas/CategoryExpand'
-        creator:
-          $ref: '#/components/schemas/UserExpand'
-
-    CreateTransactionRequest:
-      type: object
-      required:
-        - category_id
-        - type
-        - amount
-        - date
-      properties:
-        category_id:
-          type: string
-        type:
-          type: string
-          enum: [income, expense]
-        amount:
-          type: number
-          minimum: 0.01
-        note:
-          type: string
-        date:
-          type: string
-          format: date-time
-          description: ISO date format string
-
-    UpdateTransactionRequest:
-      type: object
-      properties:
-        category_id:
-          type: string
-        type:
-          type: string
-          enum: [income, expense]
-        amount:
-          type: number
-        note:
-          type: string
-        date:
-          type: string
-          format: date-time
-
-    TransactionListResponse:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransactionDTO'
-        page:
-          type: integer
-          example: 1
-        perPage:
-          type: integer
-          example: 20
-        totalItems:
-          type: integer
-          example: 42
-        totalPages:
-          type: integer
-          example: 3
-
-    MonthlyReportDTO:
-      type: object
-      properties:
-        family_id:
-          type: string
-        year:
-          type: integer
-        month:
-          type: integer
-        total_income:
-          type: number
-        total_expense:
-          type: number
-        balance:
-          type: number
-        expense_breakdown:
-          type: array
-          description: Per-category breakdown for expenses
-          items:
-            $ref: '#/components/schemas/CategoryBreakdownDTO'
-        income_breakdown:
-          type: array
-          description: Per-category breakdown for income
-          items:
-            $ref: '#/components/schemas/CategoryBreakdownDTO'
-
-    DashboardSummaryDTO:
-      type: object
-      properties:
-        family_name:
-          type: string
-        user_name:
-          type: string
-        total_balance:
-          type: number
-        monthly_income:
-          type: number
-        monthly_income_change:
-          type: number
-        monthly_expense:
-          type: number
-        monthly_expense_change:
-          type: number
-
-    CategoryBreakdownDTO:
-      type: object
-      properties:
-        category_id:
-          type: string
-        category_name:
-          type: string
-        icon:
-          type: string
-        color:
-          type: string
-        total_amount:
-          type: number
-        count:
-          type: integer
-
-    FamilyExpand:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        invite_code:
-          type: string
-
-    CategoryExpand:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        icon:
-          type: string
-        color:
-          type: string
-        is_default:
-          type: boolean
-
-    UserExpand:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        avatar:
-          type: string
-
-    ErrorResponse:
-      type: object
-      properties:
-        code:
-          type: integer
-        message:
-          type: string
-        data:
-          type: object
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get dashboard summary
+      tags:
+      - reports
+  /api/transactions:
+    get:
+      consumes:
+      - application/json
+      description: Returns authenticated user's family transactions for a date range
+        with pagination
+      parameters:
+      - description: Start date (ISO 8601 format, e.g. 2026-01-01)
+        in: query
+        name: start
+        required: true
+        type: string
+      - description: End date (ISO 8601 format, e.g. 2026-01-31)
+        in: query
+        name: end
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 20)'
+        in: query
+        name: perPage
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.TransactionListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List transactions by date range
+      tags:
+      - transactions
+    post:
+      consumes:
+      - application/json
+      description: Creates a new transaction for the authenticated user's family
+      parameters:
+      - description: Transaction data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.TransactionDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new transaction
+      tags:
+      - transactions
+  /api/transactions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing transaction (must be the creator)
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a transaction
+      tags:
+      - transactions
+    get:
+      consumes:
+      - application/json
+      description: Returns a single transaction by ID for the authenticated user's
+        family
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.TransactionDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get transaction by ID
+      tags:
+      - transactions
+    patch:
+      consumes:
+      - application/json
+      description: Updates an existing transaction (must be the creator)
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.TransactionDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a transaction
+      tags:
+      - transactions
+  /webhooks/digiflazz/{token}:
+    post:
+      consumes:
+      - application/json
+      description: Receives and processes Digiflazz webhook notifications. The token
+        identifies the family credential. Signature is validated via HMAC-SHA1 over
+        the raw body.
+      parameters:
+      - description: Webhook token (identifies the Digiflazz credential)
+        in: path
+        name: token
+        required: true
+        type: string
+      - description: 'HMAC-SHA1 signature (format: sha1=<hex>)'
+        in: header
+        name: X-Hub-Signature
+        type: string
+      - description: Digiflazz event type
+        in: header
+        name: X-Digiflazz-Event
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook received
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized - invalid signature
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found - invalid token
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Receive Digiflazz webhook
+      tags:
+      - digiflazz-webhook
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
