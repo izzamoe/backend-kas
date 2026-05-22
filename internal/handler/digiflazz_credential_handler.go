@@ -171,7 +171,13 @@ func (h *DigiflazzCredentialHandler) RotateToken(e *core.RequestEvent) error {
 		return mapCredentialError(e, err)
 	}
 
-	return e.JSON(http.StatusOK, resp)
+	baseURL := strings.TrimSuffix(e.App.Settings().Meta.AppURL, "/")
+	webhookURL := baseURL + "/webhooks/digiflazz/" + resp.Token
+	return e.JSON(http.StatusOK, map[string]any{
+		"credential":  resp.Credential,
+		"token":       resp.Token,
+		"webhook_url": webhookURL,
+	})
 }
 
 // CheckBalance checks the Digiflazz deposit balance for the family.
