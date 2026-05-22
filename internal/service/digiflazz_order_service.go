@@ -199,14 +199,23 @@ func (s *digiflazzOrderService) executePrepaidOrder(ctx context.Context, client 
 
 	customerNo := strings.TrimSpace(req.CustomerNo)
 	amount := product.Price + product.Admin
+
+	balanceResp, balanceErr := client.CekSaldo(ctx)
+	if balanceErr != nil {
+		return nil, fmt.Errorf("failed to check digiflazz balance: %w", balanceErr)
+	}
+	if balanceResp != nil && balanceResp.Deposit < amount {
+		return nil, digiflazzdomain.ErrDigiflazzInsufficientBalance
+	}
+
 	topupReq := &digiflazzclient.TopupRequest{
 		BuyerSKUCode: product.Code,
 		CustomerNo:   customerNo,
 		RefID:        refID,
+		MaxPrice:     amount,
 	}
 	if req.Amount != nil {
-		amount = float64(*req.Amount)
-		topupReq.MaxPrice = amount
+		topupReq.MaxPrice = float64(*req.Amount)
 	}
 
 	topupResp, topupErr := client.Topup(ctx, topupReq)
@@ -222,6 +231,15 @@ func (s *digiflazzOrderService) executePrepaidOrder(ctx context.Context, client 
 		return nil, fmt.Errorf("failed to marshal digiflazz topup response: %w", err)
 	}
 
+	orderPrice := responseDTO.Price
+	if orderPrice == 0 {
+		orderPrice = product.Price
+	}
+	orderAdmin := responseDTO.Admin
+	if orderAdmin == 0 {
+		orderAdmin = product.Admin
+	}
+
 	order, err := s.orderRepo.Create(repository.CreateDigiflazzOrderParams{
 		FamilyID:        familyID,
 		UserID:          createdBy,
@@ -234,8 +252,8 @@ func (s *digiflazzOrderService) executePrepaidOrder(ctx context.Context, client 
 		ProductCategory: product.Category,
 		CustomerNo:      customerNo,
 		CustomerName:    responseDTO.CustomerName,
-		Price:           responseDTO.Price,
-		Admin:           responseDTO.Admin,
+		Price:           orderPrice,
+		Admin:           orderAdmin,
 		Amount:          amount,
 		Status:          finalStatus,
 		Message:         responseDTO.Message,
@@ -261,6 +279,15 @@ func (s *digiflazzOrderService) executePostpaidInquiry(ctx context.Context, clie
 		ctx = context.Background()
 	}
 	customerNo := strings.TrimSpace(req.CustomerNo)
+
+	var plnCustomerName string
+	if strings.EqualFold(strings.TrimSpace(product.Brand), "PLN") {
+		plnResp, plnErr := client.InquiryPLN(ctx, &digiflazzclient.InquiryPLNRequest{CustomerNo: customerNo})
+		if plnErr == nil && plnResp != nil {
+			plnCustomerName = plnResp.Name
+		}
+	}
+
 	inqReq := &digiflazzclient.InqPascaRequest{
 		BuyerSKUCode: product.Code,
 		CustomerNo:   customerNo,
@@ -303,12 +330,17 @@ func (s *digiflazzOrderService) executePostpaidInquiry(ctx context.Context, clie
 		ProductName:     product.Name,
 		ProductBrand:    product.Brand,
 		ProductCategory: product.Category,
-		CustomerNo:      customerNo,
-		CustomerName:    response.CustomerName,
-		Price:           response.Price,
-		Admin:           response.Admin,
-		Amount:          amount,
-		Status:          digiflazzdomain.OrderStatusInquiry,
+		CustomerNo: customerNo,
+		CustomerName: func() string {
+			if plnCustomerName != "" {
+				return plnCustomerName
+			}
+			return response.CustomerName
+		}(),
+		Price:  response.Price,
+		Admin:  response.Admin,
+		Amount: amount,
+		Status: digiflazzdomain.OrderStatusInquiry,
 		Message:         response.Message,
 		RC:              response.RC,
 		SN:              response.SN,
