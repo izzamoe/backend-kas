@@ -1,626 +1,184 @@
 # AGENTS.md
 
-Guide untuk AI Coding Agents yang bekerja di project **Uang Kas Keluarga**.
+Agent guide for **Uang Kas Keluarga** — Go + PocketBase family finance backend.
 
-## Project Overview
-
-Aplikasi backend untuk manajemen kas keluarga menggunakan **PocketBase** dengan **Go**.
-Menggunakan **Clean Architecture** dengan **type-safe code generation** dari `pocketbase-gogen`.
-
-**Tech Stack:**
-- Language: Go 1.26.1
-- Framework: PocketBase v0.36.8
-- Database: SQLite (via PocketBase)
-- Code Generator: pocketbase-gogen
-- Architecture: Clean Architecture / Layered
-
-## Setup Commands
+## Commands
 
 ```bash
-# Install dependencies
-make install
+make serve          # go run main.go serve  (dev, auto-migration enabled)
+make build          # compile binary → ./kas
+make run            # build + serve
+make dev            # serve with air auto-reload (requires: go install github.com/air-verse/air@latest)
+make test           # go test -v ./...
+make generate       # regenerate type-safe proxies after schema changes (2-step, see below)
+make admin          # interactive admin account creation
+make backup         # copies pb_data/ to pb_data_backup/pb_data_YYYYMMDD_HHMMSS/
 
-# Run PocketBase server
-make serve
-
-# Build application
-make build
-
-# Run with auto-reload (requires air)
-make dev
-
-# Run tests
-make test
-
-# Regenerate type-safe proxies (after schema changes)
-make generate
-
-# Create admin account
-make admin
-
-# Backup database
-make backup
-
-# Clean build artifacts
-make clean
+# Migrations (also exposed via make migrate-*)
+go run . migrate up
+go run . migrate down 1
+go run . migrate create "name"
+go run . migrate collections   # snapshot current schema to migration file
+go run . migrate history-sync
 ```
 
-## Project Structure
+CI checks (must pass): `go mod tidy && git diff --exit-code`, `go vet ./...`, `make test`, `make build`.
+
+## Architecture
 
 ```
-.
-├── main.go                    # Entry point & dependency injection
-├── pbschema/
-│   └── template.go            # Editable schema template
-├── generated/                 # Auto-generated (DO NOT EDIT)
-│   ├── proxies.go             # Type-safe proxy structs
-│   ├── utils.go               # WrapRecord, NewProxy helpers
-│   ├── proxy_events.go
-│   └── proxy_hooks.go
-└── internal/
-    ├── domain/                # Business models & DTOs
-    ├── repository/            # Data access layer
-    ├── service/               # Business logic layer
-    ├── handler/               # HTTP handlers/controllers
-    ├── middleware/            # HTTP middleware
-    └── utils/                 # Internal utilities
+Handler → Service → Repository → generated proxies → PocketBase (SQLite)
 ```
 
-## Architecture Pattern
+- `main.go` — only place for dependency injection; wire repo→service→handler→`RegisterRoutes(se)`
+- `internal/domain/` — pure DTOs and request/response models; no external deps
+- `internal/repository/` — all DB access; use generated proxies here only
+- `internal/service/` — business logic and authorization
+- `internal/handler/` — thin HTTP layer; parse, call service, return JSON
+- `internal/middleware/` — `RequireAuth`, `RequireFamily`, `RequireFamilyOwner`, `InvalidateFamily`
+- `internal/digiflazz/` — external Digiflazz API client, types, webhook, HMAC-SHA1 signature
+- `internal/utils/` — `token.go`, `redaction.go`, `encryption.go` (AES-256-GCM helpers)
+- `generated/` — **DO NOT EDIT** (auto-generated; IS committed to git)
+- `pbschema/template.go` — editable schema template (edit this to customise codegen)
+- `migrations/` — auto-created during dev (`go run`); applied automatically on serve
 
-**Clean Architecture** dengan layer separation:
+## Generated Code — Critical Rules
 
-```
-Handler → Service → Repository → PocketBase
-```
+`generated/` is produced by `pocketbase-gogen`. **Never edit it manually.**
 
-**Layer Dependencies:**
-- Handler depends on Service
-- Service depends on Repository
-- Repository depends on Generated Proxies
-- NO upward dependencies
-
-**Key Principles:**
-- Each layer has clear responsibility
-- Dependency injection in `main.go`
-- Interfaces for testability
-- Domain models separate from database records
-
-## Code Style & Conventions
-
-### Go Style
-- Follow standard Go conventions
-- Use `gofmt` for formatting
-- Use meaningful variable names
-- Keep functions small and focused
-- Error handling: always check and handle errors
-
-### Naming Conventions
-```go
-// Interfaces: noun + "er" or descriptive name
-type TransactionRepository interface { }
-type TransactionService interface { }
-
-// Structs: implementation uses lowercase
-type transactionRepo struct { }
-type transactionService struct { }
-
-// Constructors: New + Name
-func NewTransactionRepository() TransactionRepository { }
-
-// Methods: verb + noun
-func (r *transactionRepo) GetByID(id string) { }
-func (s *transactionService) CreateTransaction() { }
-```
-
-### File Organization
-- One main type per file
-- File name matches main type (lowercase + underscore)
-- Example: `transaction_repository.go` for `TransactionRepository`
-
-### Package Structure
-```go
-// Domain package: pure business models
-package domain
-
-// Repository package: data access
-package repository
-
-// Service package: business logic
-package service
-
-// Handler package: HTTP handlers
-package handler
-```
-
-## Working with Generated Code
-
-### IMPORTANT: DO NOT EDIT
-```
-generated/          # Auto-generated by pocketbase-gogen
-├── proxies.go      # NEVER edit manually
-├── utils.go        # NEVER edit manually
-└── ...
-```
-
-### Regeneration Workflow
-When PocketBase schema changes:
 ```bash
 make generate
+# Step 1: pocketbase-gogen template ./pb_data ./pbschema/template.go
+# Step 2: pocketbase-gogen generate ./pbschema/template.go ./generated/proxies.go --utils --hooks
+# Run this every time PocketBase schema changes.
 ```
 
-This will:
-1. Read schema from `pb_data/data.db`
-2. Generate `pbschema/template.go` (editable)
-3. Generate type-safe proxies in `generated/`
-
-### Using Generated Proxies
-
-**✅ Correct Usage:**
+**Always use proxies in repository layer:**
 ```go
-import "kas/generated"
-
-// Wrap existing record
-proxy, err := generated.WrapRecord[generated.Transactions](record)
-if err != nil {
-    return err
-}
-
-// Type-safe access
-amount := proxy.Amount()      // float64
-note := proxy.Note()          // string
-date := proxy.Date().Time()   // time.Time
-
-// Create new proxy
-proxy, err := generated.NewProxy[generated.Transactions](app)
-proxy.SetAmount(50000)
-proxy.SetNote("Test")
-```
-
-**❌ Incorrect Usage:**
-```go
-// Don't use raw Get/Set without proxies
-amount := record.Get("amount").(float64)  // Not type-safe!
-```
-
-### Available Proxy Types
-Based on PocketBase collections:
-- `generated.Users`
-- `generated.Families`
-- `generated.FamilyMembers`
-- `generated.Categories`
-- `generated.Transactions`
-- `generated.File`
-
-## API Endpoints
-
-### Transactions
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/transactions` | Create transaction |
-| GET | `/api/transactions/:id` | Get transaction by ID |
-| GET | `/api/families/:familyId/transactions` | Get family transactions (paginated) |
-| PATCH | `/api/transactions/:id` | Update transaction |
-| DELETE | `/api/transactions/:id` | Delete transaction |
-| GET | `/api/families/:familyId/balance` | Get family balance |
-
-### Reports
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/reports/monthly?year=&month=` | Monthly report — income & expense totals + per-category breakdowns |
-| GET | `/api/reports/summary?year=&month=` | Dashboard summary — total balance, monthly stats, % change |
-
-**`GET /api/reports/monthly` response shape:**
-```json
-{
-  "family_id": "...",
-  "year": 2026,
-  "month": 4,
-  "total_income": 5000000,
-  "total_expense": 1800000,
-  "balance": 3200000,
-  "expense_breakdown": [
-    { "category_id": "...", "category_name": "Makanan", "icon": "🍔", "color": "#FF5733", "total_amount": 800000, "count": 12 }
-  ],
-  "income_breakdown": [
-    { "category_id": "...", "category_name": "Gaji", "icon": "💼", "color": "#33FF57", "total_amount": 5000000, "count": 1 }
-  ]
-}
-```
-
-**`GET /api/reports/summary` response shape:**
-```json
-{
-  "family_name": "Keluarga Bahagia",
-  "user_name": "Budi",
-  "total_balance": 12000000,
-  "monthly_income": 5000000,
-  "monthly_income_change": 10.5,
-  "monthly_expense": 1800000,
-  "monthly_expense_change": -5.2
-}
-```
-
-## Adding New Features
-
-### Example: Add Category Management
-
-**1. Create Domain Model** (`internal/domain/category.go`)
-```go
-package domain
-
-type CategoryDTO struct {
-    ID       string `json:"id"`
-    Name     string `json:"name"`
-    Icon     string `json:"icon"`
-    Color    string `json:"color"`
-}
-
-type CreateCategoryRequest struct {
-    FamilyID string `json:"family_id"`
-    Name     string `json:"name"`
-    Icon     string `json:"icon"`
-    Color    string `json:"color"`
-}
-```
-
-**2. Create Repository** (`internal/repository/category_repository.go`)
-```go
-package repository
-
-import (
-    "kas/generated"
-    "kas/internal/domain"
-    "github.com/pocketbase/pocketbase"
-)
-
-type CategoryRepository interface {
-    Create(req *domain.CreateCategoryRequest) (*domain.CategoryDTO, error)
-    GetByID(id string) (*domain.CategoryDTO, error)
-}
-
-type categoryRepo struct {
-    app *pocketbase.PocketBase
-}
-
-func NewCategoryRepository(app *pocketbase.PocketBase) CategoryRepository {
-    return &categoryRepo{app: app}
-}
-
-func (r *categoryRepo) recordToDTO(record *core.Record) *domain.CategoryDTO {
-    // Use generated proxy for type-safety
-    proxy, _ := generated.WrapRecord[generated.Categories](record)
-    return &domain.CategoryDTO{
-        ID:    proxy.Id,
-        Name:  proxy.Name(),
-        Icon:  proxy.Icon(),
-        Color: proxy.Color(),
-    }
-}
-```
-
-**3. Create Service** (`internal/service/category_service.go`)
-```go
-package service
-
-import (
-    "kas/internal/domain"
-    "kas/internal/repository"
-)
-
-type CategoryService interface {
-    CreateCategory(req *domain.CreateCategoryRequest) (*domain.CategoryDTO, error)
-}
-
-type categoryService struct {
-    categoryRepo repository.CategoryRepository
-}
-
-func NewCategoryService(repo repository.CategoryRepository) CategoryService {
-    return &categoryService{categoryRepo: repo}
-}
-```
-
-**4. Create Handler** (`internal/handler/category_handler.go`)
-```go
-package handler
-
-import (
-    "kas/internal/service"
-    "github.com/pocketbase/pocketbase/core"
-)
-
-type CategoryHandler struct {
-    service service.CategoryService
-}
-
-func NewCategoryHandler(service service.CategoryService) *CategoryHandler {
-    return &CategoryHandler{service: service}
-}
-
-func (h *CategoryHandler) RegisterRoutes(e *core.ServeEvent) {
-    e.Router.POST("/api/categories", h.Create)
-    e.Router.GET("/api/categories/:id", h.GetByID)
-}
-```
-
-**5. Wire in main.go**
-```go
-// Add to main.go
-categoryRepo := repository.NewCategoryRepository(app)
-categoryService := service.NewCategoryService(categoryRepo)
-categoryHandler := handler.NewCategoryHandler(categoryService)
-
-app.OnServe().BindFunc(func(se *core.ServeEvent) error {
-    categoryHandler.RegisterRoutes(se)
-    // ... other handlers
-    return se.Next()
-})
-```
-
-## Data Access Patterns
-
-### Repository Pattern
-Repository is the ONLY layer that accesses PocketBase directly.
-
-**Creating Records:**
-```go
-collection, _ := r.app.FindCollectionByNameOrId("transactions")
-record := core.NewRecord(collection)
-record.Set("amount", 50000)
-record.Set("note", "Example")
-r.app.Save(record)
-```
-
-**Reading Records:**
-```go
-// By ID
-record, err := r.app.FindRecordById("transactions", id)
-
-// With filter
-records, err := r.app.FindRecordsByFilter(
-    "transactions",
-    "family_id = {:familyId}",
-    "-created",
-    20,  // limit
-    0,   // offset
-    map[string]any{"familyId": familyID},
-)
-```
-
-**Using Proxies:**
-```go
+// ✅ type-safe
 proxy, _ := generated.WrapRecord[generated.Transactions](record)
-dto := &domain.TransactionDTO{
-    ID:     proxy.Id,
-    Amount: proxy.Amount(),
-}
+amount := proxy.Amount()  // float64
+
+// ❌ runtime panic risk
+amount := record.Get("amount").(float64)
 ```
 
-## Testing Guidelines
+Utility signatures from `generated/utils.go`:
+```go
+func NewProxy[P Proxy, PP ProxyP[P]](app core.App) (PP, error)
+func WrapRecord[P Proxy, PP ProxyP[P]](record *core.Record) (PP, error)
+```
 
-### Unit Testing
-- Test each layer independently
-- Mock dependencies using interfaces
-- Use table-driven tests
+**All 11 proxy types** (from `generated/proxies.go`):
+`Users`, `Families`, `FamilyMembers`, `Categories`, `Transactions`, `File`, `Jenis`,
+`DigiflazzCredentials`, `DigiflazzProducts`, `DigiflazzOrders`, `DigiflazzEvents`
+
+`pbschema/template.go` currently has no custom methods — safe to regenerate without losing handwritten logic.
+
+## Expand Relations — Non-Obvious Gotchas
+
+**Call `ExpandRecord`/`ExpandRecords` AFTER the query, not as a query param.**
 
 ```go
-func TestTransactionService_CreateTransaction(t *testing.T) {
-    tests := []struct {
-        name    string
-        req     *domain.CreateTransactionRequest
-        wantErr bool
-    }{
-        {
-            name: "valid transaction",
-            req: &domain.CreateTransactionRequest{
-                Amount: 50000,
-                // ...
-            },
-            wantErr: false,
-        },
-    }
-    
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            // Test implementation
-        })
-    }
-}
+// ✅ correct
+record, _ := app.FindRecordById("transactions", id)
+app.ExpandRecord(record, []string{"category_id", "family_id"}, nil)
+
+// ❌ WRONG — dbx.HashExp{"expand": "..."} as param does nothing
+record, _ := app.FindRecordById("transactions", id, dbx.HashExp{"expand": "category_id"})
 ```
 
-## Common Tasks
-
-### Task: Schema Changed
-```bash
-# 1. Make changes in PocketBase Admin UI
-# 2. Regenerate code
-make generate
-
-# 3. Update repository if new fields added
-# 4. Update service/handler if needed
-# 5. Test
-make test
-```
-
-### Task: Add New Endpoint
-1. Define DTO in `internal/domain/`
-2. Add method to Repository interface & implementation
-3. Add method to Service interface & implementation
-4. Add handler method
-5. Register route in `RegisterRoutes()`
-
-### Task: Add Validation
-- Add validation in Service layer
-- Use Go's built-in validation or add validator package
-- Return descriptive errors
-
+**Always nil-check expanded fields — accessing an unexpanded relation panics:**
 ```go
-func (s *transactionService) CreateTransaction(req *CreateTransactionRequest) error {
-    if req.Amount <= 0 {
-        return errors.New("amount must be greater than 0")
-    }
-    // ...
+// ✅ safe
+if family := proxy.FamilyId(); family != nil {
+    name := family.Name()
 }
+
+// ❌ PANIC if not expanded
+name := proxy.FamilyId().Name()
 ```
 
-### Task: Add Middleware
-```go
-// internal/middleware/logger.go
-func Logger(e *core.RequestEvent) error {
-    log.Printf("%s %s", e.Request.Method, e.Request.URL.Path)
-    return e.Next()
-}
+Use `app.ExpandRecords(records, fields, nil)` for slices (more efficient than per-record calls).
 
-// In handler RegisterRoutes
-e.Router.Use(middleware.Logger)
-e.Router.POST("/api/transactions", h.Create, middleware.RequireAuth)
-```
+## Middleware — Binding Order & Context Contract
 
-## Error Handling
+Available middleware:
 
-### Patterns
-```go
-// Repository: return errors as-is
-func (r *repo) GetByID(id string) (*DTO, error) {
-    record, err := r.app.FindRecordById("collection", id)
-    if err != nil {
-        return nil, err  // Let caller handle
-    }
-    return r.recordToDTO(record), nil
-}
+| Function | Signature |
+|---|---|
+| `RequireAuth` | `func(e *core.RequestEvent) error` |
+| `RequireFamily` | `func(repo FamilyMemberRepository) func(*core.RequestEvent) error` |
+| `RequireFamilyOwner` | `func() func(*core.RequestEvent) error` |
+| `InvalidateFamily` | `func(userID string)` |
+| `IsFamilyOwner` | `func(app core.App, familyID, userID string) (bool, error)` |
+| `GetFamilyRole` | `func(app core.App, familyID, userID string) (string, error)` |
 
-// Service: add context to errors
-func (s *service) Get(id string) (*DTO, error) {
-    dto, err := s.repo.GetByID(id)
-    if err != nil {
-        return nil, fmt.Errorf("failed to get transaction: %w", err)
-    }
-    return dto, nil
-}
+Non-obvious rules:
 
-// Handler: convert to HTTP errors
-func (h *handler) Get(e *core.RequestEvent) error {
-    dto, err := h.service.Get(id)
-    if err != nil {
-        return e.NotFoundError("Transaction not found", err)
-    }
-    return e.JSON(200, dto)
-}
-```
+- **Binding order matters**: `RequireFamily` returns 500 if `e.Auth == nil` — always bind after `RequireAuth`.
+- **`RequireFamilyOwner`** must also be chained after `RequireAuth` + `RequireFamily`.
+- `RequireFamily` caches membership per user for **5 minutes** and injects `familyID` into `e.Request.Context()`.
+- Handlers do **not** receive `familyID` directly — they call `middleware.GetFamilyIDFromContext(e.Request.Context())`.
+- `InvalidateFamily(userID)` **must** be called after family join/leave/create to flush the cache. It is injected into `FamilyService` in `main.go`.
+- Role cache is separate (`family_role.go`). Use `middleware.ClearRoleCache()` in tests that mutate membership.
+- Middleware is passed as constructor args (not global). `main.go` creates `requireFamily := middleware.RequireFamily(familyMemberRepo)` and passes it to each handler constructor.
+- `TransactionHandler.Update/Delete` only bind `RequireAuth`; ownership is enforced in the service layer.
 
-## PocketBase API Helpers
+## Migrations
 
-### Common Request Event Methods
-```go
-// Auth
-e.Auth                          // Current authenticated record
-e.Auth.Id                       // User ID
-
-// Request
-e.Request.Method                // HTTP method
-e.Request.URL.Query().Get("q")  // Query param
-e.Request.PathValue("id")       // Path param
-e.BindBody(&req)                // Parse JSON body
-
-// Response
-e.JSON(200, data)               // JSON response
-e.NoContent(204)                // No content
-e.BadRequestError("msg", err)   // 400
-e.UnauthorizedError("msg", err) // 401
-e.NotFoundError("msg", err)     // 404
-
-// Middleware
-e.Next()                        // Continue to next handler
-```
-
-## Best Practices
-
-### DO ✅
-- Use generated proxies in repository layer
-- Keep business logic in service layer
-- Use dependency injection
-- Return errors, don't log in libraries
-- Write tests for business logic
-- Use interfaces for dependency inversion
-- Run `make generate` after schema changes
-- Use `make help` to see available commands
-
-### DON'T ❌
-- Don't edit `generated/` files manually
-- Don't put business logic in handlers
-- Don't access database from service/handler
-- Don't use `record.Get()` when proxies available
-- Don't commit `pb_data/` to git
-- Don't hardcode values, use config/env
-- Don't skip error handling
+- **Auto-migration** is on when running via `go run` (`osutils.IsProbablyGoRun()`). Admin Dashboard collection changes auto-create migration files in `migrations/`.
+- For production, run `go run . migrate up` — automigrate is disabled in built binary.
+- Initial superuser migration reads `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars. Defaults: `admin@example.com` / `admin123456` — **change in production**.
 
 ## Environment Variables
 
-Optional `.env` file:
+`.env` is optional (gitignored). Key vars:
+
 ```bash
 PB_PORT=8090
 PB_HOST=0.0.0.0
+
+# Initial migration superuser
+ADMIN_EMAIL=your@email.com
+ADMIN_PASSWORD=yourpassword
+
+# Digiflazz integration
+DIGIFLAZZ_CREDENTIAL_ENCRYPTION_KEY=<key>   # any non-empty string; derived key is always 32 bytes
+DIGIFLAZZ_PRICE_SYNC_INTERVAL=*/30 * * * *  # default: every 30 min
+DIGIFLAZZ_ORDER_POLL_INTERVAL=*/5 * * * *   # default: every 5 min
 ```
 
-## Debugging
+## Testing
 
-### Check Generated Code
-```bash
-# View available proxy types
-grep "^type.*struct" generated/proxies.go
+Test styles in this repo:
+- **Unit**: table-driven, file-local mocks/fakes, no DB — `internal/utils/`, `internal/digiflazz/` tests
+- **Integration**: `tests.NewTestApp()` + `_ "kas/migrations"` import for PocketBase-backed tests
+- **API-level**: `tests.ApiScenario` in `internal/handler/`
 
-# View proxy methods
-grep "^func (p \*Transactions)" generated/proxies.go
-```
+Gotchas:
+- Digiflazz service integration tests require `t.Setenv("DIGIFLAZZ_CREDENTIAL_ENCRYPTION_KEY", "...")`.
+- `internal/service/digiflazz_smartfren_test.go` bootstraps against the real `pb_data/` directory — slow and brittle; do not rely on it in CI.
+- `RequireFamily` middleware cannot be fully unit-mocked; use integration tests with a real PocketBase request event for coverage.
+- Tests that mutate family membership must call `middleware.ClearRoleCache()` to avoid cache poisoning between cases.
+- No shared `TestMain` or test-helper package; helpers are file-local.
 
-### PocketBase Admin
-- Access: http://localhost:8090/_/
-- View collections, records, logs
-- Make schema changes
-- Test queries
+## Adding a New Feature
 
-### Logging
-```go
-import "log"
+1. `internal/domain/` — add DTO + request/response structs
+2. `internal/repository/` — add interface + implementation using generated proxies
+3. `internal/service/` — add interface + implementation with business logic
+4. `internal/handler/` — add handler struct, `RegisterRoutes(se *core.ServeEvent)`
+5. `main.go` — wire: `repo → service → handler`, call `handler.RegisterRoutes(se)` inside `OnServe().BindFunc`
 
-log.Printf("Debug: %+v", data)
-```
+## Key Gotchas
 
-## Git Workflow
-
-```bash
-# Files to commit
-git add internal/          # Your code
-git add main.go
-git add pbschema/          # Editable template
-git add README.md
-
-# Files NOT to commit (in .gitignore)
-# - generated/
-# - pb_data/
-# - kas (binary)
-```
-
-## Resources
-
-- PocketBase Docs: https://pocketbase.io/docs/
-- PocketBase Go API: https://pocketbase.io/docs/go-overview/
-- pocketbase-gogen: https://github.com/snonky/pocketbase-gogen
-- Project README: `README.md`
-- Project Structure: `STRUCTURE.md`
-
-## Questions?
-
-Refer to:
-1. `README.md` - Full documentation
-2. `STRUCTURE.md` - Detailed structure guide
-3. `make help` - Available commands
-4. Existing code in `internal/` - Examples
-
----
-
-**Remember:** This is a Clean Architecture project with type-safe code generation.
-Always use generated proxies, respect layer boundaries, and regenerate after schema changes!
+- **Module name is `kas`** — all internal imports are `kas/internal/...`, `kas/generated`, etc.
+- `pb_data/` is gitignored. `generated/` is NOT gitignored (committed).
+- `pb_public/` is embedded into the binary at build time (`//go:embed pb_public`).
+- SQLite is tuned with custom pragmas in `main.go` (WAL, 256 MB mmap, etc.) — do not change without understanding the implications.
+- On family creation, `categoryRepo.SeedMasterCategories` is called via `OnRecordAfterCreateSuccess("families")` hook — wired in `main.go`.
+- Digiflazz webhook auth: resolves credential by `sha256(token)` hash, then validates `X-Digiflazz-Signature` as `sha1=<hex>` via HMAC-SHA1 over the raw body. Empty secret skips validation.
+- Digiflazz product repo: free-text search uses the `~` operator on `product_name`/`buyer_sku_code`; default limit=50, hard cap 200.
+- PocketBase Admin UI: http://localhost:8090/_/
+- `godoc-mcp` is configured in `opencode.jsonc` — use it when looking up PocketBase or stdlib Go docs.

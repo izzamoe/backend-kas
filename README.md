@@ -416,7 +416,29 @@ Buat file `.env` (optional):
 ```bash
 PB_PORT=8090
 PB_HOST=0.0.0.0
+
+# Digiflazz Integration
+DIGIFLAZZ_CREDENTIAL_ENCRYPTION_KEY=your-32-char-encryption-key
+DIGIFLAZZ_PRICE_SYNC_INTERVAL=24h
+DIGIFLAZZ_ORDER_POLL_INTERVAL=1m
 ```
+
+### Digiflazz API Endpoints
+
+Aplikasi ini mendukung integrasi dengan Digiflazz untuk pembelian pulsa, paket data, dan tagihan PPOB.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/digiflazz/products` | Search/list available products |
+| POST | `/api/digiflazz/products/sync` | Manually sync product catalog (Owner only) |
+| GET | `/api/digiflazz/credentials` | Get credential metadata for family |
+| POST | `/api/digiflazz/credentials` | Set/update Digiflazz credentials |
+| POST | `/api/digiflazz/orders/prepaid` | Create prepaid order |
+| POST | `/api/digiflazz/orders/inquiry` | Create postpaid inquiry |
+| POST | `/api/digiflazz/orders/pay` | Pay for inquiry order |
+| GET | `/api/digiflazz/orders/:id` | Get order details |
+| POST | `/api/webhooks/digiflazz` | Webhook endpoint for status updates |
+
 
 ## Tech Stack
 

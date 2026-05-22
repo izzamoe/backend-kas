@@ -1,4 +1,4 @@
-.PHONY: help build run dev clean test install serve migrate generate
+.PHONY: help build run dev clean test install serve migrate generate docs
 
 APP_NAME=kas
 BUILD_DIR=.
@@ -72,3 +72,16 @@ generate: ## Generate type-safe proxies from PocketBase schema
 	@echo "Generating proxies with utils and hooks..."
 	pocketbase-gogen generate ./pbschema/template.go ./generated/proxies.go --utils --hooks
 	@echo "Code generation completed!"
+
+docs: ## Generate OpenAPI spec with swaggo/swag
+	@echo "Generating OpenAPI spec..."
+	@tmp_dir="$$(mktemp -d)"; \
+	go run github.com/swaggo/swag/cmd/swag@v1.16.6 init \
+		--generalInfo main.go \
+		--dir . \
+		--output "$$tmp_dir" \
+		--parseDependency \
+		--parseInternal; \
+	cp "$$tmp_dir/swagger.yaml" pb_public/openapi.yaml; \
+	rm -rf "$$tmp_dir"; \
+	echo "OpenAPI spec written to pb_public/openapi.yaml"
