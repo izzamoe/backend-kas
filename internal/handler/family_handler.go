@@ -31,6 +31,17 @@ func (h *FamilyHandler) RegisterRoutes(e *core.ServeEvent) {
 }
 
 // Create handles POST /api/families — creates a new family for the authenticated user.
+// @Summary Create a new family
+// @Description Creates a new family and assigns the authenticated user as the owner.
+// @Tags families
+// @Accept json
+// @Produce json
+// @Param body body domain.CreateFamilyRequest true "Family creation payload"
+// @Success 201 {object} domain.CreateFamilyResponse
+// @Failure 400 {object} map[string]any "Bad request"
+// @Failure 401 {object} map[string]any "Unauthorized"
+// @Router /api/families [post]
+// @Security BearerAuth
 func (h *FamilyHandler) Create(e *core.RequestEvent) error {
 	var req domain.CreateFamilyRequest
 	if err := e.BindBody(&req); err != nil {
@@ -46,6 +57,18 @@ func (h *FamilyHandler) Create(e *core.RequestEvent) error {
 }
 
 // Join handles POST /api/families/join — adds the authenticated user to an existing family via invite code.
+// @Summary Join an existing family
+// @Description Adds the authenticated user to an existing family using an invite code.
+// @Tags families
+// @Accept json
+// @Produce json
+// @Param body body domain.JoinFamilyRequest true "Join family payload"
+// @Success 200 {object} domain.FamilyDTO
+// @Failure 400 {object} map[string]any "Bad request"
+// @Failure 401 {object} map[string]any "Unauthorized"
+// @Failure 404 {object} map[string]any "Family not found (invalid invite code)"
+// @Router /api/families/join [post]
+// @Security BearerAuth
 func (h *FamilyHandler) Join(e *core.RequestEvent) error {
 	var req domain.JoinFamilyRequest
 	if err := e.BindBody(&req); err != nil {
@@ -65,6 +88,16 @@ func (h *FamilyHandler) Join(e *core.RequestEvent) error {
 }
 
 // Leave handles POST /api/families/leave — removes the authenticated user from their current family.
+// @Summary Leave current family
+// @Description Removes the authenticated user from their current family.
+// @Tags families
+// @Accept json
+// @Produce json
+// @Success 204 "No content"
+// @Failure 400 {object} map[string]any "Bad request"
+// @Failure 401 {object} map[string]any "Unauthorized"
+// @Router /api/families/leave [post]
+// @Security BearerAuth
 func (h *FamilyHandler) Leave(e *core.RequestEvent) error {
 	if err := h.service.LeaveFamily(e.Auth.Id); err != nil {
 		return e.BadRequestError("Failed to leave family", err)

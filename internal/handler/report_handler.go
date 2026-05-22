@@ -41,6 +41,19 @@ func (h *ReportHandler) RegisterRoutes(e *core.ServeEvent) {
 }
 
 // GetMonthlyReport handles GET /api/reports/monthly
+// @Summary Get monthly financial report
+// @Description Returns a monthly financial report with income and expense breakdown per category for the authenticated user's family.
+// @Tags reports
+// @Accept json
+// @Produce json
+// @Param year query int true "Year (1900-2100)"
+// @Param month query int true "Month (1-12)"
+// @Success 200 {object} domain.MonthlyReportDTO
+// @Failure 400 {object} map[string]any "Bad request - missing or invalid parameters"
+// @Failure 401 {object} map[string]any "Unauthorized"
+// @Failure 500 {object} map[string]any "Internal server error"
+// @Router /api/reports/monthly [get]
+// @Security BearerAuth
 func (h *ReportHandler) GetMonthlyReport(e *core.RequestEvent) error {
 	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
 	if !ok {
@@ -89,6 +102,19 @@ func (h *ReportHandler) GetMonthlyReport(e *core.RequestEvent) error {
 }
 
 // GetDashboardSummary handles GET /api/reports/summary
+// @Summary Get dashboard summary
+// @Description Returns a dashboard summary with total balance, monthly income/expense, and percentage change vs previous month. Defaults to current year/month if not provided.
+// @Tags reports
+// @Accept json
+// @Produce json
+// @Param year query int false "Year (1900-2100) — default: current year"
+// @Param month query int false "Month (1-12) — default: current month"
+// @Success 200 {object} domain.DashboardSummaryDTO
+// @Failure 400 {object} map[string]any "Bad request - invalid parameters"
+// @Failure 401 {object} map[string]any "Unauthorized"
+// @Failure 500 {object} map[string]any "Internal server error"
+// @Router /api/reports/summary [get]
+// @Security BearerAuth
 func (h *ReportHandler) GetDashboardSummary(e *core.RequestEvent) error {
 	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
 	if !ok {

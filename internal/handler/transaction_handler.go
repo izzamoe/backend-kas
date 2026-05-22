@@ -43,6 +43,23 @@ func (h *TransactionHandler) RegisterRoutes(e *core.ServeEvent) {
 }
 
 // List handler returns authenticated user's family transactions for a date range.
+//
+//	@Summary		List transactions by date range
+//	@Description	Returns authenticated user's family transactions for a date range with pagination
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			start	query	string	true	"Start date (ISO 8601 format, e.g. 2026-01-01)"
+//	@Param			end		query	string	true	"End date (ISO 8601 format, e.g. 2026-01-31)"
+//	@Param			page	query	int		false	"Page number (default: 1)"
+//	@Param			perPage	query	int		false	"Items per page (default: 20)"
+//	@Security		BearerAuth
+//	@Success		200	{object}	domain.TransactionListResponse
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		403	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/api/transactions [get]
 func (h *TransactionHandler) List(e *core.RequestEvent) error {
 	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
 	if !ok {
@@ -74,6 +91,20 @@ func (h *TransactionHandler) List(e *core.RequestEvent) error {
 }
 
 // Create transaction handler
+//
+//	@Summary		Create a new transaction
+//	@Description	Creates a new transaction for the authenticated user's family
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		domain.CreateTransactionRequest	true	"Transaction data"
+//	@Security		BearerAuth
+//	@Success		201	{object}	domain.TransactionDTO
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		403	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/api/transactions [post]
 func (h *TransactionHandler) Create(e *core.RequestEvent) error {
 	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
 	if !ok {
@@ -94,6 +125,21 @@ func (h *TransactionHandler) Create(e *core.RequestEvent) error {
 }
 
 // GetByID handler
+//
+//	@Summary		Get transaction by ID
+//	@Description	Returns a single transaction by ID for the authenticated user's family
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path	string	true	"Transaction ID"
+//	@Security		BearerAuth
+//	@Success		200	{object}	domain.TransactionDTO
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		403	{object}	map[string]interface{}
+//	@Failure		404	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/api/transactions/{id} [get]
 func (h *TransactionHandler) GetByID(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
 	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
@@ -113,6 +159,22 @@ func (h *TransactionHandler) GetByID(e *core.RequestEvent) error {
 }
 
 // GetByFamily handler with pagination
+//
+//	@Summary		Get family transactions
+//	@Description	Returns paginated transactions for a specific family
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			familyId	path	string	true	"Family ID"
+//	@Param			page		query	int		false	"Page number (default: 1)"
+//	@Param			pageSize	query	int		false	"Page size (default: 20, max: 100)"
+//	@Security		BearerAuth
+//	@Success		200	{object}	domain.FamilyTransactionListResponse
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		403	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/api/families/{familyId}/transactions [get]
 func (h *TransactionHandler) GetByFamily(e *core.RequestEvent) error {
 	familyID := e.Request.PathValue("familyId")
 	authFamilyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
@@ -148,6 +210,20 @@ func (h *TransactionHandler) GetByFamily(e *core.RequestEvent) error {
 }
 
 // Update handler
+//
+//	@Summary		Update a transaction
+//	@Description	Updates an existing transaction (must be the creator)
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path	string						true	"Transaction ID"
+//	@Param			body	body	domain.UpdateTransactionRequest	true	"Update data"
+//	@Security		BearerAuth
+//	@Success		200	{object}	domain.TransactionDTO
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/api/transactions/{id} [patch]
 func (h *TransactionHandler) Update(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
 
@@ -165,6 +241,19 @@ func (h *TransactionHandler) Update(e *core.RequestEvent) error {
 }
 
 // Delete handler
+//
+//	@Summary		Delete a transaction
+//	@Description	Deletes an existing transaction (must be the creator)
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path	string	true	"Transaction ID"
+//	@Security		BearerAuth
+//	@Success		204	"No Content"
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/api/transactions/{id} [delete]
 func (h *TransactionHandler) Delete(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
 
@@ -176,6 +265,20 @@ func (h *TransactionHandler) Delete(e *core.RequestEvent) error {
 }
 
 // GetBalance handler
+//
+//	@Summary		Get family balance
+//	@Description	Returns the current balance for a specific family
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			familyId	path	string	true	"Family ID"
+//	@Security		BearerAuth
+//	@Success		200	{object}	domain.BalanceResponse
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		403	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/api/families/{familyId}/balance [get]
 func (h *TransactionHandler) GetBalance(e *core.RequestEvent) error {
 	familyID := e.Request.PathValue("familyId")
 	authFamilyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
