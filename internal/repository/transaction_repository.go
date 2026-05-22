@@ -109,6 +109,33 @@ func (r *transactionRepo) GetByID(id string) (*domain.TransactionDTO, error) {
 	return r.recordToDTO(record)
 }
 
+func (r *transactionRepo) FindByFamilyUserCategoryAmountNote(familyID, userID, categoryID string, amount float64, note string) (*domain.TransactionDTO, error) {
+	records, err := r.app.FindRecordsByFilter(
+		"transactions",
+		"family_id = {:familyID} && created_by = {:userID} && category_id = {:categoryID} && type = {:txType} && amount = {:amount} && note = {:note}",
+		"-created",
+		1,
+		0,
+		map[string]any{
+			"familyID":   familyID,
+			"userID":     userID,
+			"categoryID": categoryID,
+			"txType":     "expense",
+			"amount":     amount,
+			"note":       note,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find matching transaction: %w", err)
+	}
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	r.app.ExpandRecord(records[0], defaultExpandFields, nil)
+	return r.recordToDTO(records[0])
+}
+
 // GetByFamilyID with pagination
 func (r *transactionRepo) GetByFamilyID(familyID string, limit, offset int) ([]*domain.TransactionDTO, error) {
 	records, err := r.app.FindRecordsByFilter(

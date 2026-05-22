@@ -56,6 +56,32 @@ func (r *categoryRepo) GetByID(id string) (*CategoryInfo, error) {
 	}, nil
 }
 
+func (r *categoryRepo) FindByFamilyNameAndType(familyID, name, txType string) (*CategoryInfo, error) {
+	record, err := r.app.FindFirstRecordByFilter(
+		"categories",
+		"family_id = {:familyID} && name = {:name} && type = {:type}",
+		map[string]any{"familyID": familyID, "name": name, "type": txType},
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to find category by family/name/type: %w", err)
+	}
+
+	proxy, err := generated.WrapRecord[generated.Categories](record)
+	if err != nil {
+		return nil, fmt.Errorf("failed to wrap category record: %w", err)
+	}
+
+	return &CategoryInfo{
+		ID:        proxy.Id,
+		FamilyID:  proxy.Record.GetString("family_id"),
+		Name:      proxy.Name(),
+		IsDefault: proxy.IsDefault(),
+	}, nil
+}
+
 // SeedMasterCategories copies all master categories into the given family, making per-family default categories.
 func (r *categoryRepo) SeedMasterCategories(app core.App, familyID string) error {
 	return app.RunInTransaction(func(txApp core.App) error {
