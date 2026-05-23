@@ -13,13 +13,14 @@ func TestDigiflazzCredentialRepositoryIntegration(t *testing.T) {
 		APIKeyCiphertext: "ciphertext-value",
 		APIKeyLast4:      "1234",
 		APIKeyHash:       "hash-value",
+		WebhookID:        "hook-initial",
 		Testing:          true,
 		IsActive:         true,
 	})
 	if err != nil {
 		t.Fatalf("Create returned error: %v", err)
 	}
-	if created.ID == "" || created.FamilyID != familyID || created.Username != "buyer" || created.APIKeyLast4 != "1234" || !created.Testing || !created.IsActive {
+	if created.ID == "" || created.FamilyID != familyID || created.Username != "buyer" || created.APIKeyLast4 != "1234" || created.WebhookID != "hook-initial" || !created.Testing || !created.IsActive {
 		t.Fatalf("unexpected created credential: %+v", created)
 	}
 
@@ -43,7 +44,7 @@ func TestDigiflazzCredentialRepositoryIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSecretByFamilyID returned error: %v", err)
 	}
-	if secret == nil || secret.APIKeyCiphertext != "ciphertext-value" || secret.APIKeyHash != "hash-value" {
+	if secret == nil || secret.APIKeyCiphertext != "ciphertext-value" || secret.APIKeyHash != "hash-value" || secret.WebhookID != "hook-initial" {
 		t.Fatalf("unexpected secret credential: %+v", secret)
 	}
 
@@ -67,18 +68,20 @@ func TestDigiflazzCredentialRepositoryIntegration(t *testing.T) {
 	newCiphertext := "new-ciphertext"
 	newLast4 := "5678"
 	newHash := "new-hash"
+	newWebhookID := "hook-updated"
 	webhookHash := "webhook-hash"
 	updated, err := repo.Update(created.ID, &DigiflazzCredentialUpdateData{
 		Username:         &newUsername,
 		APIKeyCiphertext: &newCiphertext,
 		APIKeyLast4:      &newLast4,
 		APIKeyHash:       &newHash,
+		WebhookID:        &newWebhookID,
 		WebhookTokenHash: &webhookHash,
 	})
 	if err != nil {
 		t.Fatalf("Update returned error: %v", err)
 	}
-	if updated.Username != newUsername || updated.APIKeyLast4 != newLast4 || !updated.WebhookConfigured {
+	if updated.Username != newUsername || updated.APIKeyLast4 != newLast4 || updated.WebhookID != newWebhookID || !updated.WebhookConfigured {
 		t.Fatalf("unexpected updated credential: %+v", updated)
 	}
 
@@ -86,7 +89,7 @@ func TestDigiflazzCredentialRepositoryIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSecretByID returned error: %v", err)
 	}
-	if secret.APIKeyCiphertext != newCiphertext || secret.APIKeyHash != newHash || secret.WebhookTokenHash != webhookHash {
+	if secret.APIKeyCiphertext != newCiphertext || secret.APIKeyHash != newHash || secret.WebhookID != newWebhookID || secret.WebhookTokenHash != webhookHash {
 		t.Fatalf("unexpected updated secret: %+v", secret)
 	}
 

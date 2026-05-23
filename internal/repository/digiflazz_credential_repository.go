@@ -47,6 +47,7 @@ type DigiflazzCredentialCreateData struct {
 	APIKeyCiphertext string
 	APIKeyLast4      string
 	APIKeyHash       string
+	WebhookID        string
 	WebhookTokenHash string
 	WebhookSecret    string
 	Testing          bool
@@ -58,6 +59,7 @@ type DigiflazzCredentialUpdateData struct {
 	APIKeyCiphertext *string
 	APIKeyLast4      *string
 	APIKeyHash       *string
+	WebhookID        *string
 	WebhookTokenHash *string
 	WebhookSecret    *string
 	Testing          *bool
@@ -71,6 +73,7 @@ type DigiflazzCredentialRecord struct {
 	APIKeyCiphertext string
 	APIKeyLast4      string
 	APIKeyHash       string
+	WebhookID        string
 	WebhookTokenHash string
 	WebhookSecret    string
 	Testing          bool
@@ -95,6 +98,7 @@ func (r *digiflazzCredentialRepo) Create(data *DigiflazzCredentialCreateData) (*
 	proxy.Record.Set("family_id", data.FamilyID)
 	proxy.SetUsername(data.Username)
 	proxy.SetApiKey(encodeDigiflazzCredentialSecret(data.APIKeyCiphertext, data.APIKeyLast4, data.APIKeyHash, data.WebhookTokenHash))
+	proxy.SetWebhookId(data.WebhookID)
 	proxy.Record.Set("webhook_token_hash", data.WebhookTokenHash)
 	proxy.Record.Set("webhook_secret", data.WebhookSecret)
 	proxy.SetTesting(data.Testing)
@@ -247,6 +251,9 @@ func (r *digiflazzCredentialRepo) Update(id string, data *DigiflazzCredentialUpd
 		current.WebhookTokenHash = *data.WebhookTokenHash
 		proxy.Record.Set("webhook_token_hash", *data.WebhookTokenHash)
 	}
+	if data.WebhookID != nil {
+		proxy.SetWebhookId(*data.WebhookID)
+	}
 	if data.WebhookSecret != nil {
 		proxy.Record.Set("webhook_secret", *data.WebhookSecret)
 	}
@@ -343,6 +350,7 @@ func (r *digiflazzCredentialRepo) recordToRecord(record *core.Record) (*Digiflaz
 		APIKeyCiphertext: payload.Ciphertext,
 		APIKeyLast4:      payload.Last4,
 		APIKeyHash:       payload.Hash,
+		WebhookID:        proxy.WebhookId(),
 		WebhookTokenHash: webhookTokenHash,
 		WebhookSecret:    record.GetString("webhook_secret"),
 		Testing:          proxy.Testing(),
@@ -360,6 +368,7 @@ func (r *DigiflazzCredentialRecord) SafeDTO() *digiflazzdomain.CredentialDTO {
 		APIKeyLast4:       r.APIKeyLast4,
 		Testing:           r.Testing,
 		IsActive:          r.IsActive,
+		WebhookID:         r.WebhookID,
 		WebhookConfigured: r.WebhookTokenHash != "",
 		CreatedAt:         r.CreatedAt,
 		UpdatedAt:         r.UpdatedAt,

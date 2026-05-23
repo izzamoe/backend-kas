@@ -9,6 +9,7 @@ type CredentialDTO struct {
 	APIKeyLast4       string    `json:"api_key_last4,omitempty"`
 	Testing           bool      `json:"testing"`
 	IsActive          bool      `json:"is_active"`
+	WebhookID         string    `json:"webhook_id,omitempty"`
 	Balance           *float64  `json:"balance,omitempty"`
 	WebhookConfigured bool      `json:"webhook_configured"`
 	CreatedAt         time.Time `json:"created_at"`
@@ -25,6 +26,18 @@ type RotateWebhookTokenResponse struct {
 	Token      string         `json:"token"`
 }
 
+type WebhookTestResponse struct {
+	Sed    string          `json:"sed,omitempty"`
+	HookID string          `json:"hook_id"`
+	Hook   WebhookTestHook `json:"hook"`
+}
+
+type WebhookTestHook struct {
+	URL    string `json:"url,omitempty"`
+	Type   string `json:"type,omitempty"`
+	Status int    `json:"status"`
+}
+
 type DigiflazzDepositResponse struct {
 	Rc            string  `json:"rc"`
 	Bank          string  `json:"bank"`
@@ -39,6 +52,7 @@ type DigiflazzDepositResponse struct {
 type UpsertCredentialRequest struct {
 	Username      string  `json:"username"`                 // required
 	APIKey        string  `json:"api_key"`                  // required
+	WebhookID     *string `json:"webhook_id,omitempty"`     // nil = keep existing; &"" = clear
 	WebhookSecret *string `json:"webhook_secret,omitempty"` // nil = keep existing; &"" = clear
 	Testing       *bool   `json:"testing,omitempty"`        // nil = keep existing
 }
