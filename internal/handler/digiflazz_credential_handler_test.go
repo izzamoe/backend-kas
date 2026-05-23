@@ -25,6 +25,7 @@ type fakeCredentialService struct {
 	upsertCredential   func(ctx context.Context, familyID, userID string, req digiflazzdomain.UpsertCredentialRequest) (*digiflazzdomain.UpsertCredentialResult, error)
 	deleteCredential   func(ctx context.Context, familyID, userID string) error
 	rotateWebhookToken func(ctx context.Context, familyID, userID string) (*digiflazzdomain.RotateWebhookTokenResponse, error)
+	testWebhook        func(ctx context.Context, familyID, userID string) (*digiflazzdomain.WebhookTestResponse, error)
 	checkBalance       func(ctx context.Context, familyID, userID string) (*digiflazzdomain.BalanceResponse, error)
 	deposit            func(ctx context.Context, familyID, userID string, amount float64, bank string) (*digiflazzclient.DepositResponse, error)
 }
@@ -55,6 +56,13 @@ func (f *fakeCredentialService) RotateWebhookToken(ctx context.Context, familyID
 		return f.rotateWebhookToken(ctx, familyID, userID)
 	}
 	return nil, fmt.Errorf("rotate failed")
+}
+
+func (f *fakeCredentialService) TestWebhook(ctx context.Context, familyID, userID string) (*digiflazzdomain.WebhookTestResponse, error) {
+	if f.testWebhook != nil {
+		return f.testWebhook(ctx, familyID, userID)
+	}
+	return nil, fmt.Errorf("test webhook failed")
 }
 
 func (f *fakeCredentialService) CheckBalance(ctx context.Context, familyID, userID string) (*digiflazzdomain.BalanceResponse, error) {
@@ -266,6 +274,76 @@ func TestDigiflazzCredentialHandler_RotateToken(t *testing.T) {
 			},
 			ExpectedStatus:  http.StatusOK,
 			ExpectedContent: []string{`"credential"`, `"token"`},
+			TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+				bindDigiflazzCredentialRoutes(svrApp, e, svc)
+			},
+		},
+	}
+
+	for _, scenario := range scenarios {
+		scenario.Test(t)
+	}
+}
+
+func TestDigiflazzCredentialHandler_TestWebhook(t *testing.T) {
+	app := newDigiflazzCredentialTestApp(t)
+	token, familyID, userID := seedDigiflazzCredentialTestData(t, app)
+
+	svc := &fakeCredentialService{
+		testWebhook: func(ctx context.Context, fID, uID string) (*digiflazzdomain.WebhookTestResponse, error) {
+			if fID != familyID || uID != userID {
+				return nil, fmt.Errorf("unexpected auth context")
+			}
+			return &digiflazzdomain.WebhookTestResponse{
+				Sed:    "ping-sed",
+				HookID: "hook-123",
+				Hook:   digiflazzdomain.WebhookTestHook{URL: "https://example.test/webhook", Type: "application/json", Status: 1},
+			}, nil
+		},
+	}
+
+	scenarios := []tests.ApiScenario{
+		{
+			Name:   "test webhook success",
+			Method: http.MethodPost,
+			URL:    "/api/digiflazz/credential/test-webhook",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + token,
+			},
+			ExpectedStatus:     http.StatusOK,
+			ExpectedContent:    []string{`"hook_id":"hook-123"`, `"status":1`, `"url":"https://example.test/webhook"`},
+			NotExpectedContent: []string{`"secret"`, "must-not-leak"},
+			TestAppFactory:     func(t testing.TB) *tests.TestApp { return app },
+			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+				bindDigiflazzCredentialRoutes(svrApp, e, svc)
+			},
+		},
+	}
+
+	for _, scenario := range scenarios {
+		scenario.Test(t)
+	}
+}
+
+func TestDigiflazzCredentialHandler_TestWebhookForbiddenForMember(t *testing.T) {
+	app := newDigiflazzCredentialTestApp(t)
+	_, familyID, _ := seedDigiflazzCredentialTestData(t, app)
+	memberToken, _ := seedDigiflazzCredentialMemberToken(t, app, familyID)
+	middleware.ClearRoleCache()
+
+	svc := &fakeCredentialService{}
+
+	scenarios := []tests.ApiScenario{
+		{
+			Name:   "test webhook - non-owner member gets 403",
+			Method: http.MethodPost,
+			URL:    "/api/digiflazz/credential/test-webhook",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + memberToken,
+			},
+			ExpectedStatus:  http.StatusForbidden,
+			ExpectedContent: []string{`"status":403`},
 			TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
 				bindDigiflazzCredentialRoutes(svrApp, e, svc)

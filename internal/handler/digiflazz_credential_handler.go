@@ -47,6 +47,7 @@ func (h *DigiflazzCredentialHandler) RegisterRoutes(e *core.ServeEvent) {
 	e.Router.POST("/api/digiflazz/credential", h.Upsert).Bind(h.requireAuth).Bind(h.requireFamily).Bind(h.requireFamilyOwner)
 	e.Router.DELETE("/api/digiflazz/credential", h.Delete).Bind(h.requireAuth).Bind(h.requireFamily).Bind(h.requireFamilyOwner)
 	e.Router.POST("/api/digiflazz/credential/rotate", h.RotateToken).Bind(h.requireAuth).Bind(h.requireFamily).Bind(h.requireFamilyOwner)
+	e.Router.POST("/api/digiflazz/credential/test-webhook", h.TestWebhook).Bind(h.requireAuth).Bind(h.requireFamily).Bind(h.requireFamilyOwner)
 	e.Router.GET("/api/digiflazz/credential", h.Get).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.GET("/api/digiflazz/credential/balance", h.CheckBalance).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.POST("/api/digiflazz/deposit", h.Deposit).Bind(h.requireAuth).Bind(h.requireFamily)
@@ -178,6 +179,34 @@ func (h *DigiflazzCredentialHandler) RotateToken(e *core.RequestEvent) error {
 		"token":       resp.Token,
 		"webhook_url": webhookURL,
 	})
+}
+
+// TestWebhook triggers Digiflazz's dashboard webhook ping endpoint for the active credential.
+//
+//	@Summary		Test Digiflazz webhook
+//	@Description	Calls Digiflazz POST /v1/report/hooks/{webhookID}/pings using the active family credential. Owner-only.
+//	@Tags			digiflazz-credentials
+//	@Produce		json
+//	@Success		200	{object}	digiflazz.WebhookTestResponse
+//	@Failure		400	{object}	map[string]any
+//	@Failure		401	{object}	map[string]any
+//	@Failure		403	{object}	map[string]any
+//	@Failure		404	{object}	map[string]any
+//	@Failure		500	{object}	map[string]any
+//	@Security		BearerAuth
+//	@Router			/api/digiflazz/credential/test-webhook [post]
+func (h *DigiflazzCredentialHandler) TestWebhook(e *core.RequestEvent) error {
+	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
+	if !ok {
+		return e.InternalServerError("Family context not found", nil)
+	}
+
+	resp, err := h.service.TestWebhook(e.Request.Context(), familyID, e.Auth.Id)
+	if err != nil {
+		return mapCredentialError(e, err)
+	}
+
+	return e.JSON(http.StatusOK, resp)
 }
 
 // CheckBalance checks the Digiflazz deposit balance for the family.
