@@ -26,6 +26,7 @@ type DigiflazzCredentialService interface {
 	UpsertCredential(ctx context.Context, familyID, userID string, req digiflazzdomain.UpsertCredentialRequest) (*digiflazzdomain.UpsertCredentialResult, error)
 	DeleteCredential(ctx context.Context, familyID, userID string) error
 	RotateWebhookToken(ctx context.Context, familyID, userID string) (*digiflazzdomain.RotateWebhookTokenResponse, error)
+	TestWebhook(ctx context.Context, familyID, userID string) (*digiflazzdomain.WebhookTestResponse, error)
 	CheckBalance(ctx context.Context, familyID, userID string) (*digiflazzdomain.BalanceResponse, error)
 	Deposit(ctx context.Context, familyID, userID string, amount float64, bank string) (*digiflazzclient.DepositResponse, error)
 }
@@ -109,6 +110,10 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 		if req.WebhookSecret != nil {
 			webhookSecret = strings.TrimSpace(*req.WebhookSecret)
 		}
+		webhookID := ""
+		if req.WebhookID != nil {
+			webhookID = strings.TrimSpace(*req.WebhookID)
+		}
 		testing := false
 		if req.Testing != nil {
 			testing = *req.Testing
@@ -120,6 +125,7 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 			APIKeyCiphertext: ciphertext,
 			APIKeyLast4:      last4(apiKey),
 			APIKeyHash:       sha256Hex(apiKey),
+			WebhookID:        webhookID,
 			WebhookSecret:    webhookSecret,
 			WebhookTokenHash: tokenHash,
 			Testing:          testing,
@@ -154,6 +160,10 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 		if req.WebhookSecret != nil {
 			webhookSecret := strings.TrimSpace(*req.WebhookSecret)
 			update.WebhookSecret = &webhookSecret
+		}
+		if req.WebhookID != nil {
+			webhookID := strings.TrimSpace(*req.WebhookID)
+			update.WebhookID = &webhookID
 		}
 
 		if err := s.productRepo.DeleteByFamilyID(familyID); err != nil {
@@ -233,6 +243,49 @@ func (s *digiflazzCredentialService) RotateWebhookToken(ctx context.Context, fam
 	return &digiflazzdomain.RotateWebhookTokenResponse{
 		Credential: credential,
 		Token:      token,
+	}, nil
+}
+
+func (s *digiflazzCredentialService) TestWebhook(ctx context.Context, familyID, userID string) (*digiflazzdomain.WebhookTestResponse, error) {
+	familyID = strings.TrimSpace(familyID)
+	if err := s.requireOwner(familyID, userID); err != nil {
+		return nil, err
+	}
+
+	existing, err := s.credentialRepo.GetActiveSecretByFamilyID(familyID)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, errors.New("active digiflazz credential not found")
+	}
+
+	webhookID := strings.TrimSpace(existing.WebhookID)
+	if webhookID == "" {
+		return nil, errors.New("digiflazz webhook id is required before testing webhook")
+	}
+
+	rawAPIKey, err := s.decryptAPIKey(existing.APIKeyCiphertext)
+	if err != nil {
+		return nil, err
+	}
+	client := s.clientFactory(existing.Username, rawAPIKey, existing.Testing)
+	ping, err := client.TestWebhookPing(ctx, webhookID)
+	if err != nil {
+		return nil, err
+	}
+	if ping == nil {
+		return nil, errors.New("digiflazz webhook ping returned empty response")
+	}
+
+	return &digiflazzdomain.WebhookTestResponse{
+		Sed:    ping.Sed,
+		HookID: ping.HookID,
+		Hook: digiflazzdomain.WebhookTestHook{
+			URL:    ping.Hook.URL,
+			Type:   ping.Hook.Type,
+			Status: ping.Hook.Status,
+		},
 	}, nil
 }
 

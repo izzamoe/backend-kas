@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
@@ -233,6 +234,65 @@ func TestDigiflazzCredentialServiceCreateCredential(t *testing.T) {
 		}
 		if count != 1 {
 			t.Fatalf("expected exactly 1 credential after two upserts, got %d", count)
+		}
+	})
+}
+
+func TestDigiflazzCredentialServiceTestWebhook(t *testing.T) {
+	t.Run("errors when webhook id is missing", func(t *testing.T) {
+		fx := setupDigiflazzCredentialServiceFixture(t)
+		fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 1}, nil)
+		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234"})
+		if err != nil {
+			t.Fatalf("UpsertCredential returned error: %v", err)
+		}
+
+		_, err = fx.svc.TestWebhook(context.Background(), fx.familyID, fx.ownerID)
+		if err == nil || !strings.Contains(err.Error(), "webhook id") || !strings.Contains(err.Error(), "required") {
+			t.Fatalf("expected clear missing webhook id error, got %v", err)
+		}
+		if fx.fake.CallCount("TestWebhookPing") != 0 {
+			t.Fatalf("expected no ping call when webhook id is missing, got %d", fx.fake.CallCount("TestWebhookPing"))
+		}
+	})
+
+	t.Run("owner pings configured webhook", func(t *testing.T) {
+		fx := setupDigiflazzCredentialServiceFixture(t)
+		fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 1}, nil)
+		fx.fake.SetResponse("TestWebhookPing", digiflazzclient.WebhookPingResponse{
+			Sed:    "ping-sed",
+			HookID: "hook-123",
+			Hook:   digiflazzclient.WebhookPingHook{URL: "https://example.test/webhook", Secret: "must-not-leak", Type: "application/json", Status: 1},
+		}, nil)
+		webhookID := " hook-123 "
+		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookID: &webhookID})
+		if err != nil {
+			t.Fatalf("UpsertCredential returned error: %v", err)
+		}
+
+		resp, err := fx.svc.TestWebhook(context.Background(), fx.familyID, fx.ownerID)
+		if err != nil {
+			t.Fatalf("TestWebhook returned error: %v", err)
+		}
+		if resp == nil || resp.HookID != "hook-123" {
+			t.Fatalf("unexpected ping response: %+v", resp)
+		}
+		if resp.Sed != "ping-sed" || resp.Hook.URL != "https://example.test/webhook" || resp.Hook.Type != "application/json" || resp.Hook.Status != 1 {
+			t.Fatalf("unexpected safe ping response mapping: %+v", resp)
+		}
+		encoded, err := json.Marshal(resp)
+		if err != nil {
+			t.Fatalf("marshal safe ping response: %v", err)
+		}
+		if body := string(encoded); strings.Contains(body, "secret") || strings.Contains(body, "must-not-leak") {
+			t.Fatalf("safe ping response leaked upstream secret: %s", body)
+		}
+		if fx.fake.CallCount("TestWebhookPing") != 1 {
+			t.Fatalf("expected one ping call, got %d", fx.fake.CallCount("TestWebhookPing"))
+		}
+		call := fx.fake.History()[1]
+		if call.Method != "TestWebhookPing" || call.Request != "hook-123" {
+			t.Fatalf("unexpected ping call: %+v", call)
 		}
 	})
 }
