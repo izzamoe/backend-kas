@@ -602,6 +602,14 @@ func (p *DigiflazzCredentials) SetTesting(testing bool) {
 	p.Set("testing", testing)
 }
 
+func (p *DigiflazzCredentials) WebhookId() string {
+	return p.GetString("webhook_id")
+}
+
+func (p *DigiflazzCredentials) SetWebhookId(webhookId string) {
+	p.Set("webhook_id", webhookId)
+}
+
 func (p *DigiflazzCredentials) WebhookTokenHash() string {
 	return p.GetString("webhook_token_hash")
 }

@@ -150,6 +150,7 @@ type DigiflazzCredentials struct {
 	username           string
 	api_key            string
 	testing            bool
+	webhook_id         string
 	webhook_token_hash string
 	webhook_secret     string
 	is_active          bool
