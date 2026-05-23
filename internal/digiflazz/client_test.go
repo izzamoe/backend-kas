@@ -232,6 +232,48 @@ func TestDeposit_ServerError(t *testing.T) {
 	assertIsDFError(t, err, 500)
 }
 
+func TestTestWebhookPing_Happy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertBaseRequest(t, r)
+		if r.URL.Path != "/report/hooks/hook-123/pings" {
+			t.Fatalf("path: got %q want /report/hooks/hook-123/pings", r.URL.Path)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			t.Fatalf("expected empty request body, got JSON: %+v", body)
+		}
+		writeJSON(w, WebhookPingResponse{
+			Sed:    "ping-sed",
+			HookID: "hook-123",
+			Hook: WebhookPingHook{
+				URL:    "https://example.test/webhooks/digiflazz/token",
+				Secret: "secret",
+				Type:   "application/json",
+				Status: 1,
+			},
+		})
+	}))
+	defer srv.Close()
+
+	resp, err := testClient(srv).TestWebhookPing(context.Background(), "hook-123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.HookID != "hook-123" || resp.Hook.Status != 1 || resp.Hook.URL == "" {
+		t.Fatalf("unexpected ping response: %+v", resp)
+	}
+}
+
+func TestTestWebhookPing_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	_, err := testClient(srv).TestWebhookPing(context.Background(), "hook-123")
+	assertIsDFError(t, err, 500)
+}
+
 func TestTopup_Happy(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assertBaseRequest(t, r)

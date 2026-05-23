@@ -150,6 +150,14 @@ func (f *FakeClient) Deposit(ctx context.Context, req *DepositRequest) (*Deposit
 	return castResponse[DepositResponse](resp)
 }
 
+func (f *FakeClient) TestWebhookPing(ctx context.Context, webhookID string) (*WebhookPingResponse, error) {
+	resp, err := f.record("TestWebhookPing", webhookID)
+	if err != nil {
+		return nil, err
+	}
+	return castResponse[WebhookPingResponse](resp)
+}
+
 func (f *FakeClient) Topup(ctx context.Context, req *TopupRequest) (*TransactionResponse, error) {
 	resp, err := f.record("Topup", req)
 	if err != nil {

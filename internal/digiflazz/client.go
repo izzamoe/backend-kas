@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
@@ -17,11 +18,41 @@ type DigiflazzClient interface {
 	DaftarHargaPrabayar(ctx context.Context, opts *PriceListRequest) ([]PriceListPrepaidItem, error)
 	DaftarHargaPascabayar(ctx context.Context, opts *PriceListRequest) ([]PriceListPascaItem, error)
 	Deposit(ctx context.Context, req *DepositRequest) (*DepositResponse, error)
+	TestWebhookPing(ctx context.Context, webhookID string) (*WebhookPingResponse, error)
 	Topup(ctx context.Context, req *TopupRequest) (*TransactionResponse, error)
 	InqPasca(ctx context.Context, req *InqPascaRequest) (*TransactionResponse, error)
 	PayPasca(ctx context.Context, req *PayPascaRequest) (*TransactionResponse, error)
 	StatusPasca(ctx context.Context, req *StatusPascaRequest) (*TransactionResponse, error)
 	InquiryPLN(ctx context.Context, req *InquiryPLNRequest) (*InquiryPLNResponse, error)
+}
+
+func (c *client) postEmpty(ctx context.Context, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.BaseURL+path, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("digiflazz: create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("digiflazz: do request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("digiflazz: read response: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return &DigiflazzError{StatusCode: resp.StatusCode, Body: string(bodyBytes)}
+	}
+	if out == nil || len(bodyBytes) == 0 {
+		return nil
+	}
+	if err := json.Unmarshal(bodyBytes, out); err != nil {
+		return fmt.Errorf("digiflazz: unmarshal response: %w", err)
+	}
+	return nil
 }
 
 type DigiflazzError struct {
@@ -196,6 +227,20 @@ func (c *client) Deposit(ctx context.Context, req *DepositRequest) (*DepositResp
 
 	var resp DepositResponse
 	if err := c.post(ctx, "/deposit", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (c *client) TestWebhookPing(ctx context.Context, webhookID string) (*WebhookPingResponse, error) {
+	webhookID = strings.TrimSpace(webhookID)
+	if webhookID == "" {
+		return nil, fmt.Errorf("digiflazz webhook id is required")
+	}
+
+	var resp WebhookPingResponse
+	path := "/report/hooks/" + url.PathEscape(webhookID) + "/pings"
+	if err := c.postEmpty(ctx, path, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

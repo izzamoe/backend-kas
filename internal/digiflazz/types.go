@@ -125,31 +125,31 @@ type CekSaldoResponse struct {
 }
 
 type PriceListPrepaidItem struct {
-	ProductName         string  `json:"product_name"`
-	Category            string  `json:"category"`
-	Brand               string  `json:"brand"`
-	Type                string  `json:"type"`
-	SellerName          string  `json:"seller_name"`
-	Price               float64 `json:"price"`
-	BuyerSKUCode        string  `json:"buyer_sku_code"`
+	ProductName         string        `json:"product_name"`
+	Category            string        `json:"category"`
+	Brand               string        `json:"brand"`
+	Type                string        `json:"type"`
+	SellerName          string        `json:"seller_name"`
+	Price               float64       `json:"price"`
+	BuyerSKUCode        string        `json:"buyer_sku_code"`
 	BuyerProductStatus  ProductStatus `json:"buyer_product_status"`
 	SellerProductStatus ProductStatus `json:"seller_product_status"`
 	UnlimitedStock      bool          `json:"unlimited_stock"`
-	Stock               int     `json:"stock"`
-	Multi               bool    `json:"multi"`
-	StartCutOff         string  `json:"start_cut_off"`
-	EndCutOff           string  `json:"end_cut_off"`
-	Desc                string  `json:"desc"`
+	Stock               int           `json:"stock"`
+	Multi               bool          `json:"multi"`
+	StartCutOff         string        `json:"start_cut_off"`
+	EndCutOff           string        `json:"end_cut_off"`
+	Desc                string        `json:"desc"`
 }
 
 type PriceListPascaItem struct {
-	ProductName         string  `json:"product_name"`
-	Category            string  `json:"category"`
-	Brand               string  `json:"brand"`
-	SellerName          string  `json:"seller_name"`
-	Admin               float64 `json:"admin"`
-	Commission          float64 `json:"commission"`
-	BuyerSKUCode        string  `json:"buyer_sku_code"`
+	ProductName         string        `json:"product_name"`
+	Category            string        `json:"category"`
+	Brand               string        `json:"brand"`
+	SellerName          string        `json:"seller_name"`
+	Admin               float64       `json:"admin"`
+	Commission          float64       `json:"commission"`
+	BuyerSKUCode        string        `json:"buyer_sku_code"`
 	BuyerProductStatus  ProductStatus `json:"buyer_product_status"`
 	SellerProductStatus ProductStatus `json:"seller_product_status"`
 	Desc                string        `json:"desc"`
@@ -162,6 +162,19 @@ type DepositResponse struct {
 	AccountNo     string  `json:"account_no"`
 	Notes         string  `json:"notes"`
 	Amount        float64 `json:"amount"`
+}
+
+type WebhookPingResponse struct {
+	Sed    string          `json:"sed"`
+	HookID string          `json:"hook_id"`
+	Hook   WebhookPingHook `json:"hook"`
+}
+
+type WebhookPingHook struct {
+	URL    string `json:"url"`
+	Secret string `json:"secret"`
+	Type   string `json:"type"`
+	Status int    `json:"status"`
 }
 
 type TransactionResponse struct {
