@@ -51,3 +51,12 @@ Thumbs.db
 
 # Local AI tooling config
 opencode.jsonc
+
+# Local dev scripts and API dumps
+check_balance.sh
+fetch_*.sh
+pricelist.json
+pulsa.json
+sku_ax10.json
+smartfren_products.txt
+sync_log_*.json
