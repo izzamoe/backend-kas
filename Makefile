@@ -1,4 +1,4 @@
-.PHONY: help build run dev clean test install serve migrate generate docs
+.PHONY: help build run dev clean test install serve migrate generate docs lint install-hooks
 
 APP_NAME=kas
 BUILD_DIR=.
@@ -72,6 +72,18 @@ generate: ## Generate type-safe proxies from PocketBase schema
 	@echo "Generating proxies with utils and hooks..."
 	pocketbase-gogen generate ./pbschema/template.go ./generated/proxies.go --utils --hooks
 	@echo "Code generation completed!"
+
+lint: ## Run go vet + staticcheck (excludes generated/)
+	go vet ./...
+	@if command -v staticcheck > /dev/null; then \
+		staticcheck -checks "all,-ST1000,-ST1003,-ST1020,-ST1021,-ST1022" $$(go list ./... | grep -v 'kas/generated$$' | grep -v 'kas/pbschema$$'); \
+	else \
+		echo "staticcheck not installed. Run: go install honnef.co/go/tools/cmd/staticcheck@latest"; \
+	fi
+
+install-hooks: ## Install git hooks from scripts/ into .git/hooks/
+	@chmod +x scripts/pre-commit scripts/install-hooks.sh
+	@bash scripts/install-hooks.sh
 
 docs: ## Generate OpenAPI spec with swaggo/swag
 	@echo "Generating OpenAPI spec..."
