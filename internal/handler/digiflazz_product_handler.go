@@ -1,10 +1,8 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/middleware"
@@ -87,21 +85,4 @@ func (h *DigiflazzProductHandler) Search(e *core.RequestEvent) error {
 		"items": products,
 		"limit": limit,
 	})
-}
-
-// mapProductError converts product service errors to appropriate HTTP errors.
-func mapProductError(e *core.RequestEvent, err error) error {
-	if err == nil {
-		return nil
-	}
-	msg := err.Error()
-	lower := strings.ToLower(msg)
-
-	if strings.Contains(lower, "only family owners") || strings.Contains(lower, "unauthorized") {
-		return e.ForbiddenError("Access denied", errors.New(msg))
-	}
-	if strings.Contains(lower, "not found") {
-		return e.NotFoundError("Resource not found", err)
-	}
-	return e.InternalServerError("Internal server error", err)
 }

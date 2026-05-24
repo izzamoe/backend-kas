@@ -22,19 +22,19 @@ import (
 // ---------------------------------------------------------------------------
 
 type digiflazzE2EFixture struct {
-	app            *tests.TestApp
-	familyID       string
-	ownerID        string
-	ownerToken     string
-	memberID       string
-	memberToken    string
-	credentialRepo repository.DigiflazzCredentialRepository
-	productRepo    repository.DigiflazzProductRepository
-	orderRepo      repository.DigiflazzOrderRepository
-	eventRepo      repository.DigiflazzEventRepository
-	transactionRepo repository.TransactionRepository
-	categoryRepo   repository.CategoryRepository
-	fake           *digiflazzclient.FakeClient
+	app                *tests.TestApp
+	familyID           string
+	ownerID            string
+	ownerToken         string
+	memberID           string
+	memberToken        string
+	credentialRepo     repository.DigiflazzCredentialRepository
+	productRepo        repository.DigiflazzProductRepository
+	orderRepo          repository.DigiflazzOrderRepository
+	eventRepo          repository.DigiflazzEventRepository
+	transactionRepo    repository.TransactionRepository
+	categoryRepo       repository.CategoryRepository
+	fake               *digiflazzclient.FakeClient
 	clientFactoryCalls []digiflazzClientFactoryCall
 }
 
@@ -116,18 +116,18 @@ func setupDigiflazzE2EFixture(t *testing.T) *digiflazzE2EFixture {
 	fake := digiflazzclient.NewFakeClient()
 	fx := &digiflazzE2EFixture{
 		app:             app,
-		familyID:       family.Id,
-		ownerID:        owner.Id,
-		ownerToken:     ownerToken,
-		memberID:       member.Id,
-		memberToken:    memberToken,
-		credentialRepo: credentialRepo,
-		productRepo:    productRepo,
-		orderRepo:      orderRepo,
-		eventRepo:      eventRepo,
+		familyID:        family.Id,
+		ownerID:         owner.Id,
+		ownerToken:      ownerToken,
+		memberID:        member.Id,
+		memberToken:     memberToken,
+		credentialRepo:  credentialRepo,
+		productRepo:     productRepo,
+		orderRepo:       orderRepo,
+		eventRepo:       eventRepo,
 		transactionRepo: transactionRepo,
-		categoryRepo:   categoryRepo,
-		fake:           fake,
+		categoryRepo:    categoryRepo,
+		fake:            fake,
 	}
 
 	return fx
@@ -191,20 +191,13 @@ func (fx *digiflazzE2EFixture) orderService() DigiflazzOrderService {
 		CredentialRepo:  fx.credentialRepo,
 		ProductService:  NewDigiflazzProductService(fx.app, fx.productRepo, fx.credentialRepo, func(username, apiKey string, testing bool) digiflazzclient.DigiflazzClient { return fx.fake }),
 		EventRepo:       fx.eventRepo,
-		TransactionRepo:  fx.transactionRepo,
+		TransactionRepo: fx.transactionRepo,
 		CategoryRepo:    fx.categoryRepo,
 		ClientFactory: func(username, apiKey string, testing bool) digiflazzclient.DigiflazzClient {
 			fx.clientFactoryCalls = append(fx.clientFactoryCalls, digiflazzClientFactoryCall{Username: username, APIKey: apiKey, Testing: testing})
 			return fx.fake
 		},
 	})
-}
-
-func (fx *digiflazzE2EFixture) credentialService() DigiflazzCredentialService {
-	productSvc := NewDigiflazzProductService(fx.app, fx.productRepo, fx.credentialRepo, func(username, apiKey string, testing bool) digiflazzclient.DigiflazzClient { return fx.fake })
-	return NewDigiflazzCredentialService(fx.credentialRepo, fx.app, func(username, apiKey string, testing bool) digiflazzclient.DigiflazzClient {
-		return fx.fake
-	}, fx.productRepo, productSvc)
 }
 
 func (fx *digiflazzE2EFixture) productService() DigiflazzProductService {

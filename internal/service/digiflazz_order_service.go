@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -160,7 +159,10 @@ func (s *digiflazzOrderService) CreateOrder(ctx context.Context, familyID, creat
 		return nil, fmt.Errorf("failed to decrypt api key: %w", err)
 	}
 
-	refID := uuid.New().String()
+	refID, err := generateDigiflazzOrderRefID(familyID, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ref id: %w", err)
+	}
 	client := s.clientFactory(cred.Username, rawAPIKey, cred.Testing)
 
 	if product.IsPrepaid {
@@ -330,22 +332,22 @@ func (s *digiflazzOrderService) executePostpaidInquiry(ctx context.Context, clie
 		ProductName:     product.Name,
 		ProductBrand:    product.Brand,
 		ProductCategory: product.Category,
-		CustomerNo: customerNo,
+		CustomerNo:      customerNo,
 		CustomerName: func() string {
 			if plnCustomerName != "" {
 				return plnCustomerName
 			}
 			return response.CustomerName
 		}(),
-		Price:  response.Price,
-		Admin:  response.Admin,
-		Amount: amount,
-		Status: digiflazzdomain.OrderStatusInquiry,
-		Message:         response.Message,
-		RC:              response.RC,
-		SN:              response.SN,
-		Response:        string(responsePayload),
-		IsPrepaid:       false,
+		Price:     response.Price,
+		Admin:     response.Admin,
+		Amount:    amount,
+		Status:    digiflazzdomain.OrderStatusInquiry,
+		Message:   response.Message,
+		RC:        response.RC,
+		SN:        response.SN,
+		Response:  string(responsePayload),
+		IsPrepaid: false,
 	})
 	if err != nil {
 		return nil, err
@@ -890,14 +892,6 @@ func (s *digiflazzOrderService) createPostpaidOrderEvent(order *digiflazzdomain.
 	return nil
 }
 
-func isDigiflazzPLNProduct(product *digiflazzdomain.ProductDTO) bool {
-	if product == nil {
-		return false
-	}
-	value := strings.ToLower(product.Code + " " + product.Name + " " + product.Brand + " " + product.Category)
-	return strings.Contains(value, "pln") || strings.Contains(value, "listrik")
-}
-
 func digiflazzOrderAmount(response *digiflazzdomain.OrderResponseDTO) float64 {
 	if response == nil {
 		return 0
@@ -1039,7 +1033,10 @@ func classifyDigiflazzTopupResponse(resp *digiflazzclient.TransactionResponse, e
 	if err != nil {
 		status := digiflazzdomain.OrderStatusProcessing
 		message := "digiflazz topup is processing"
-		if !isTimeoutLike(err) {
+		if errors.Is(err, digiflazzdomain.ErrDigiflazzTimeout) {
+			status = digiflazzdomain.OrderStatusFailed
+			message = err.Error()
+		} else if !isTimeoutLike(err) {
 			message = err.Error()
 		}
 		return &digiflazzdomain.OrderResponseDTO{Message: message, Status: status}, status

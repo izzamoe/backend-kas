@@ -411,14 +411,7 @@ func (r *transactionRepo) GetMonthlyReportData(familyID string, year, month int)
 	toBreakdownData := func(rows []categoryRow) []CategoryBreakdownData {
 		out := make([]CategoryBreakdownData, len(rows))
 		for i, c := range rows {
-			out[i] = CategoryBreakdownData{
-				CategoryID:   c.CategoryID,
-				CategoryName: c.CategoryName,
-				Icon:         c.Icon,
-				Color:        c.Color,
-				TotalAmount:  c.TotalAmount,
-				Count:        c.Count,
-			}
+			out[i] = CategoryBreakdownData(c)
 		}
 		return out
 	}
