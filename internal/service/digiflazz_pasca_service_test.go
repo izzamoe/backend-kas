@@ -16,6 +16,9 @@ type mockDigiflazzPascaProductService struct {
 	err     error
 }
 
+func (m *mockDigiflazzPascaProductService) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
+	return nil, nil
+}
 func (m *mockDigiflazzPascaProductService) SyncPricelistWithCredential(_ context.Context, _ *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	return nil, nil
 }

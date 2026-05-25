@@ -15,6 +15,9 @@ type fakeCronProductService struct {
 	syncPricelistWithCredentialFn func(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error)
 }
 
+func (f *fakeCronProductService) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
+	return nil, nil
+}
 func (f *fakeCronProductService) SyncPricelistWithCredential(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	if f.syncPricelistWithCredentialFn != nil {
 		return f.syncPricelistWithCredentialFn(ctx, credential)
@@ -63,6 +66,9 @@ func (f *fakeCronOrderService) CheckAndUpdateStatus(ctx context.Context, orderID
 	if f.checkAndUpdateStatusFn != nil {
 		return f.checkAndUpdateStatusFn(ctx, orderID)
 	}
+	return nil, nil
+}
+func (f *fakeCronOrderService) InquiryPLN(_ context.Context, _, _ string) (*digiflazzdomain.PLNInquiryResult, error) {
 	return nil, nil
 }
 
@@ -143,9 +149,9 @@ func (f *fakeCronOrderRepo) ListPendingForPoll(createdAfter time.Time, limit int
 }
 
 type fakeCronEventRepo struct {
-	createFn      func(data *repository.DigiflazzEventCreateData) (*repository.DigiflazzEventRecord, error)
-	createCalls   int
-	createMutex   sync.Mutex
+	createFn    func(data *repository.DigiflazzEventCreateData) (*repository.DigiflazzEventRecord, error)
+	createCalls int
+	createMutex sync.Mutex
 }
 
 func (f *fakeCronEventRepo) Create(data *repository.DigiflazzEventCreateData) (*repository.DigiflazzEventRecord, error) {

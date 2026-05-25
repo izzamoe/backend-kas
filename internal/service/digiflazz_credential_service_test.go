@@ -48,6 +48,9 @@ func (f *fakeProductRepoForCredSvc) DeleteByFamilyID(familyID string) error { re
 
 type fakeProductSvcForCredSvc struct{}
 
+func (f *fakeProductSvcForCredSvc) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
+	return nil, nil
+}
 func (f *fakeProductSvcForCredSvc) SyncPricelistWithCredential(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	return &SyncResult{}, nil
 }

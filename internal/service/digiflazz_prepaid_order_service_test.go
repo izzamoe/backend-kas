@@ -227,6 +227,9 @@ type fakeDigiflazzPrepaidProductService struct {
 	product *digiflazzdomain.ProductDTO
 }
 
+func (f *fakeDigiflazzPrepaidProductService) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
+	return nil, nil
+}
 func (f *fakeDigiflazzPrepaidProductService) SyncPricelistWithCredential(_ context.Context, _ *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	return nil, nil
 }

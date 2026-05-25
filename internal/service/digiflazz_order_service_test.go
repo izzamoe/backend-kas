@@ -64,6 +64,9 @@ type fakeOrderTestProductSvc struct {
 	getProductBySKUFn func(familyID, sku string) (*digiflazzdomain.ProductDTO, error)
 }
 
+func (f *fakeOrderTestProductSvc) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
+	return nil, nil
+}
 func (f *fakeOrderTestProductSvc) SyncPricelistWithCredential(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	return nil, nil
 }
@@ -106,7 +109,7 @@ func (f *fakeOrderTestCredRepo) GetActiveByFamilyID(familyID string) (*digiflazz
 	return nil, nil
 }
 func (f *fakeOrderTestCredRepo) CountByFamilyID(familyID string) (int, error) { return 0, nil }
-func (f *fakeOrderTestCredRepo) Delete(id string) error                        { return nil }
+func (f *fakeOrderTestCredRepo) Delete(id string) error                       { return nil }
 func (f *fakeOrderTestCredRepo) GetByID(id string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
@@ -169,8 +172,8 @@ func TestDigiflazzOrderServiceCreateOrderGeneratesRefAndStoresSnapshot(t *testin
 	if order.ID != "order1" || order.Status != digiflazzdomain.OrderStatusPending {
 		t.Fatalf("unexpected created order: %+v", order)
 	}
-	if matched := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).MatchString(captured.RefID); !matched {
-		t.Fatalf("ref id %q does not match expected UUID format", captured.RefID)
+	if matched := regexp.MustCompile(`^DFZ-[A-Z0-9]+-\d+-[A-Z0-9]+$`).MatchString(captured.RefID); !matched {
+		t.Fatalf("ref id %q does not match expected DFZ-{prefix}-{unix}-{random} format", captured.RefID)
 	}
 	if captured.FamilyID != "fam123456789" || captured.UserID != "user1" || captured.CredentialID != "cred1" {
 		t.Fatalf("unexpected identity params: %+v", captured)
