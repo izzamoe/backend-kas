@@ -427,17 +427,39 @@ DIGIFLAZZ_ORDER_POLL_INTERVAL=1m
 
 Aplikasi ini mendukung integrasi dengan Digiflazz untuk pembelian pulsa, paket data, dan tagihan PPOB.
 
+#### Credentials
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/digiflazz/credential` | Get credential metadata for family | Member+ |
+| POST | `/api/digiflazz/credential` | Set/update Digiflazz credentials | Owner |
+| DELETE | `/api/digiflazz/credential` | Remove Digiflazz credentials | Owner |
+| POST | `/api/digiflazz/credential/rotate` | Rotate webhook token | Owner |
+| POST | `/api/digiflazz/credential/test-webhook` | Trigger Digiflazz webhook ping test | Owner |
+| GET | `/api/digiflazz/credential/balance` | Check deposit balance from Digiflazz | Member+ |
+| POST | `/api/digiflazz/deposit` | Create deposit ticket (bank transfer) | Owner |
+
+#### Products
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/digiflazz/products` | Search/list available products | Member+ |
+| POST | `/api/digiflazz/products/sync` | Manually trigger pricelist sync from Digiflazz | Owner |
+
+#### Orders
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/digiflazz/orders` | List orders (paginated) | Member+ |
+| GET | `/api/digiflazz/orders/{id}` | Get order detail | Member+ |
+| POST | `/api/digiflazz/orders` | Create prepaid order or postpaid inquiry (set `order_type`: `prepaid`/`postpaid`) | Member+ |
+| POST | `/api/digiflazz/orders/{id}/pay` | Pay for an existing postpaid inquiry | Member+ |
+
+#### Webhook
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/digiflazz/products` | Search/list available products |
-| POST | `/api/digiflazz/products/sync` | Manually sync product catalog (Owner only) |
-| GET | `/api/digiflazz/credentials` | Get credential metadata for family |
-| POST | `/api/digiflazz/credentials` | Set/update Digiflazz credentials |
-| POST | `/api/digiflazz/orders/prepaid` | Create prepaid order |
-| POST | `/api/digiflazz/orders/inquiry` | Create postpaid inquiry |
-| POST | `/api/digiflazz/orders/pay` | Pay for inquiry order |
-| GET | `/api/digiflazz/orders/:id` | Get order details |
-| POST | `/api/webhooks/digiflazz` | Webhook endpoint for status updates |
+| POST | `/webhooks/digiflazz/{token}` | Receive Digiflazz callbacks (no auth — token in path) |
 
 
 ## Tech Stack
