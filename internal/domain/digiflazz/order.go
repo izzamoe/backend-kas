@@ -41,11 +41,21 @@ type OrderDTO struct {
 }
 
 type CreateOrderRequest struct {
-	BuyerSKUCode string `json:"buyer_sku_code"`
+	BuyerSKUCode string  `json:"buyer_sku_code"`
+	CustomerNo   string  `json:"customer_no"`
+	Amount       *int    `json:"amount,omitempty"`
+	IDPelanggan2 string  `json:"id_pelanggan2,omitempty"`
+	Year         *int    `json:"year,omitempty"`
+	MaxPrice     float64 `json:"max_price,omitempty"`
+	AllowDot     bool    `json:"allow_dot,omitempty"`
+}
+
+type PLNInquiryResult struct {
 	CustomerNo   string `json:"customer_no"`
-	Amount       *int   `json:"amount,omitempty"`
-	IDPelanggan2 string `json:"id_pelanggan2,omitempty"`
-	Year         *int   `json:"year,omitempty"`
+	MeterNo      string `json:"meter_no"`
+	SubscriberID string `json:"subscriber_id"`
+	Name         string `json:"name"`
+	SegmentPower string `json:"segment_power"`
 }
 
 type TopupRequest struct {
