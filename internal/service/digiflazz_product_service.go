@@ -21,6 +21,7 @@ type SyncResult struct {
 
 type DigiflazzProductService interface {
 	SyncPricelistWithCredential(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error)
+	SyncForFamily(ctx context.Context, familyID string) (*SyncResult, error)
 	SearchProducts(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error)
 	GetProductBySKU(familyID, sku string) (*digiflazzdomain.ProductDTO, error)
 }
@@ -99,6 +100,20 @@ func (s *digiflazzProductService) SyncPricelistWithCredential(ctx context.Contex
 	}
 	client := s.clientFactory(credential.Username, rawAPIKey, credential.Testing)
 	return s.doSyncWithClient(ctx, client, familyID, credentialID), nil
+}
+
+func (s *digiflazzProductService) SyncForFamily(ctx context.Context, familyID string) (*SyncResult, error) {
+	if familyID == "" {
+		return nil, fmt.Errorf("digiflazz_product_svc: familyID is required for SyncForFamily")
+	}
+	credential, err := s.credentialRepo.GetActiveSecretByFamilyID(familyID)
+	if err != nil {
+		return nil, fmt.Errorf("digiflazz_product_svc: get active credential: %w", err)
+	}
+	if credential == nil {
+		return nil, fmt.Errorf("digiflazz_product_svc: no active credential found for family")
+	}
+	return s.SyncPricelistWithCredential(ctx, credential)
 }
 
 func (s *digiflazzProductService) SearchProducts(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error) {

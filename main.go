@@ -93,7 +93,7 @@ func main() {
 	reportHandler := handler.NewReportHandler(reportService, familyMemberRepo, middleware.RequireAuth, requireFamily)
 	familyHandler := handler.NewFamilyHandler(familyService, middleware.RequireAuth)
 	digiflazzCredentialHandler := handler.NewDigiflazzCredentialHandler(digiflazzCredentialService, middleware.RequireAuth, requireFamily, requireFamilyOwner)
-	digiflazzProductHandler := handler.NewDigiflazzProductHandler(digiflazzProductService, middleware.RequireAuth, requireFamily)
+	digiflazzProductHandler := handler.NewDigiflazzProductHandler(digiflazzProductService, middleware.RequireAuth, requireFamily, requireFamilyOwner)
 	digiflazzOrderHandler := handler.NewDigiflazzOrderHandler(digiflazzOrderService, middleware.RequireAuth, requireFamily)
 	digiflazzWebhookHandler := handler.NewDigiflazzWebhookHandler(digiflazzCredentialRepo, digiflazzOrderRepo, digiflazzEventRepo, digiflazzOrderService)
 

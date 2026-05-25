@@ -57,6 +57,7 @@ type DigiflazzOrderService interface {
 	UpdateStatus(familyID, id string, status digiflazzdomain.OrderStatus, response *digiflazzdomain.OrderResponseDTO) (*digiflazzdomain.OrderDTO, error)
 	FinalizeSuccessOrder(orderID string) (*digiflazzdomain.OrderDTO, error)
 	CheckAndUpdateStatus(ctx context.Context, orderID string) (*digiflazzdomain.OrderDTO, error)
+	InquiryPLN(ctx context.Context, familyID, customerNo string) (*digiflazzdomain.PLNInquiryResult, error)
 }
 
 type DigiflazzOrderServiceDeps struct {
@@ -215,9 +216,13 @@ func (s *digiflazzOrderService) executePrepaidOrder(ctx context.Context, client 
 		CustomerNo:   customerNo,
 		RefID:        refID,
 		MaxPrice:     amount,
+		AllowDot:     req.AllowDot,
 	}
 	if req.Amount != nil {
 		topupReq.MaxPrice = float64(*req.Amount)
+	}
+	if req.MaxPrice > 0 {
+		topupReq.MaxPrice = req.MaxPrice
 	}
 
 	topupResp, topupErr := client.Topup(ctx, topupReq)
@@ -956,6 +961,48 @@ func (s *digiflazzOrderService) createPrepaidOrderEvent(order, updated *digiflaz
 		return fmt.Errorf("failed to create digiflazz order event: %w", err)
 	}
 	return nil
+}
+
+func (s *digiflazzOrderService) InquiryPLN(ctx context.Context, familyID, customerNo string) (*digiflazzdomain.PLNInquiryResult, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	customerNo = strings.TrimSpace(customerNo)
+	if customerNo == "" {
+		return nil, errors.New("customer_no is required")
+	}
+	if strings.TrimSpace(familyID) == "" {
+		return nil, errors.New("family_id is required")
+	}
+	if s.credentialRepo == nil {
+		return nil, errors.New("digiflazz credential repository is required")
+	}
+	cred, err := s.credentialRepo.GetActiveSecretByFamilyID(familyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get credential: %w", err)
+	}
+	if cred == nil {
+		return nil, errors.New("no active digiflazz credential found for family")
+	}
+	apiKey, err := decryptDigiflazzCredentialAPIKey(cred.APIKeyCiphertext)
+	if err != nil {
+		return nil, err
+	}
+	client := s.clientFactory(cred.Username, apiKey, cred.Testing)
+	resp, err := client.InquiryPLN(ctx, &digiflazzclient.InquiryPLNRequest{CustomerNo: customerNo})
+	if err != nil {
+		return nil, fmt.Errorf("pln inquiry failed: %w", err)
+	}
+	if resp == nil {
+		return nil, errors.New("empty pln inquiry response")
+	}
+	return &digiflazzdomain.PLNInquiryResult{
+		CustomerNo:   resp.CustomerNo,
+		MeterNo:      resp.MeterNo,
+		SubscriberID: resp.SubscriberID,
+		Name:         resp.Name,
+		SegmentPower: resp.SegmentPower,
+	}, nil
 }
 
 func canTransitionDigiflazzOrder(from, to digiflazzdomain.OrderStatus) bool {
