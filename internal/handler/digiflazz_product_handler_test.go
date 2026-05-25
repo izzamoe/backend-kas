@@ -21,6 +21,7 @@ import (
 type fakeProductService struct {
 	searchProducts              func(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error)
 	syncPricelistWithCredential func(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*service.SyncResult, error)
+	syncForFamily               func(ctx context.Context, familyID string) (*service.SyncResult, error)
 	getProductBySKU             func(familyID, sku string) (*digiflazzdomain.ProductDTO, error)
 }
 
@@ -36,6 +37,13 @@ func (f *fakeProductService) SyncPricelistWithCredential(ctx context.Context, cr
 		return f.syncPricelistWithCredential(ctx, credential)
 	}
 	return nil, fmt.Errorf("not implemented in fake")
+}
+
+func (f *fakeProductService) SyncForFamily(ctx context.Context, familyID string) (*service.SyncResult, error) {
+	if f.syncForFamily != nil {
+		return f.syncForFamily(ctx, familyID)
+	}
+	return &service.SyncResult{}, nil
 }
 
 func (f *fakeProductService) GetProductBySKU(familyID, sku string) (*digiflazzdomain.ProductDTO, error) {
@@ -126,7 +134,8 @@ func newDigiflazzProductTestApp(t *testing.T) *tests.TestApp {
 func bindDigiflazzProductRoutes(app *tests.TestApp, e *core.ServeEvent, svc service.DigiflazzProductService) {
 	familyMemberRepo := repository.NewFamilyMemberRepository(app)
 	requireFamily := middleware.RequireFamily(familyMemberRepo)
-	h := handler.NewDigiflazzProductHandler(svc, middleware.RequireAuth, requireFamily)
+	requireFamilyOwner := middleware.RequireFamilyOwner()
+	h := handler.NewDigiflazzProductHandler(svc, middleware.RequireAuth, requireFamily, requireFamilyOwner)
 	h.RegisterRoutes(e)
 }
 
@@ -136,7 +145,8 @@ func bindDigiflazzProductRoutesReal(app *tests.TestApp, e *core.ServeEvent) {
 	svc := service.NewDigiflazzProductService(app, productRepo, credentialRepo, nil)
 	familyMemberRepo := repository.NewFamilyMemberRepository(app)
 	requireFamily := middleware.RequireFamily(familyMemberRepo)
-	h := handler.NewDigiflazzProductHandler(svc, middleware.RequireAuth, requireFamily)
+	requireFamilyOwner := middleware.RequireFamilyOwner()
+	h := handler.NewDigiflazzProductHandler(svc, middleware.RequireAuth, requireFamily, requireFamilyOwner)
 	h.RegisterRoutes(e)
 }
 
@@ -439,22 +449,70 @@ func TestDigiflazzProduct_SearchQueryFilter(t *testing.T) {
 	}).Test(t)
 }
 
-func TestDigiflazzProduct_SyncEndpointRemoved(t *testing.T) {
-	app := newDigiflazzProductTestApp(t)
-	ownerToken, _, _, _ := seedDigiflazzProductTestData(t, app)
+func TestDigiflazzProductHandler_Sync(t *testing.T) {
+	t.Run("owner can trigger sync", func(t *testing.T) {
+		app := newDigiflazzProductTestApp(t)
+		ownerToken, _, _, _ := seedDigiflazzProductTestData(t, app)
 
-	(&tests.ApiScenario{
-		Name:   "POST /products/sync returns 404",
-		Method: "POST",
-		URL:    "/api/digiflazz/products/sync",
-		Headers: map[string]string{
-			"Authorization": "Bearer " + ownerToken,
-		},
-		ExpectedStatus:  http.StatusNotFound,
-		ExpectedContent: []string{`"status":404`},
-		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
-		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzProductRoutesReal(svrApp, e)
-		},
-	}).Test(t)
+		svc := &fakeProductService{
+			syncForFamily: func(ctx context.Context, familyID string) (*service.SyncResult, error) {
+				return &service.SyncResult{PrepaidUpserted: 5, PostpaidUpserted: 3, TotalUpserted: 8}, nil
+			},
+		}
+
+		(&tests.ApiScenario{
+			Name:   "owner can trigger sync",
+			Method: "POST",
+			URL:    "/api/digiflazz/products/sync",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + ownerToken,
+			},
+			ExpectedStatus:  http.StatusOK,
+			ExpectedContent: []string{`"total_upserted":8`, `"prepaid_upserted":5`, `"postpaid_upserted":3`},
+			TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+				bindDigiflazzProductRoutes(svrApp, e, svc)
+			},
+		}).Test(t)
+	})
+
+	t.Run("member cannot trigger sync", func(t *testing.T) {
+		app := newDigiflazzProductTestApp(t)
+		_, memberToken, _, _ := seedDigiflazzProductTestData(t, app)
+
+		svc := &fakeProductService{}
+
+		(&tests.ApiScenario{
+			Name:   "member cannot trigger sync",
+			Method: "POST",
+			URL:    "/api/digiflazz/products/sync",
+			Headers: map[string]string{
+				"Authorization": "Bearer " + memberToken,
+			},
+			ExpectedStatus:  http.StatusForbidden,
+			ExpectedContent: []string{`"status":403`},
+			TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+				bindDigiflazzProductRoutes(svrApp, e, svc)
+			},
+		}).Test(t)
+	})
+
+	t.Run("unauthenticated cannot trigger sync", func(t *testing.T) {
+		app := newDigiflazzProductTestApp(t)
+
+		svc := &fakeProductService{}
+
+		(&tests.ApiScenario{
+			Name:            "unauthenticated cannot trigger sync",
+			Method:          "POST",
+			URL:             "/api/digiflazz/products/sync",
+			ExpectedStatus:  http.StatusUnauthorized,
+			ExpectedContent: []string{`"status":401`},
+			TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
+			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+				bindDigiflazzProductRoutes(svrApp, e, svc)
+			},
+		}).Test(t)
+	})
 }

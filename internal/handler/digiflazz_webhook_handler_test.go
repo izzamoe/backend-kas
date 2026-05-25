@@ -94,6 +94,9 @@ func (f *fakeWebhookOrderService) FinalizeSuccessOrder(string) (*digiflazzdomain
 func (f *fakeWebhookOrderService) CheckAndUpdateStatus(context.Context, string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+func (f *fakeWebhookOrderService) InquiryPLN(_ context.Context, _, _ string) (*digiflazzdomain.PLNInquiryResult, error) {
+	return nil, nil
+}
 
 func newDigiflazzWebhookTestApp(t *testing.T) *tests.TestApp {
 	t.Helper()
@@ -413,9 +416,9 @@ func TestDigiflazzWebhookHandler_EmptySecretSkipsValidation(t *testing.T) {
 	body := []byte(`{"ref_id":"REF-1","status":"success"}`)
 
 	(&tests.ApiScenario{
-		Name:   "empty secret skips signature validation not 401",
-		Method: http.MethodPost,
-		URL:    "/webhooks/digiflazz/" + token,
+		Name:            "empty secret skips signature validation not 401",
+		Method:          http.MethodPost,
+		URL:             "/webhooks/digiflazz/" + token,
 		Body:            bytes.NewReader(body),
 		ExpectedStatus:  http.StatusOK,
 		ExpectedContent: []string{`"status":"received"`},
