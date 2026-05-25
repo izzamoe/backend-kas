@@ -14,9 +14,10 @@ import (
 
 // DigiflazzProductHandler handles HTTP requests for Digiflazz product listing and sync.
 type DigiflazzProductHandler struct {
-	service       service.DigiflazzProductService
-	requireAuth   *hook.Handler[*core.RequestEvent]
-	requireFamily *hook.Handler[*core.RequestEvent]
+	service            service.DigiflazzProductService
+	requireAuth        *hook.Handler[*core.RequestEvent]
+	requireFamily      *hook.Handler[*core.RequestEvent]
+	requireFamilyOwner *hook.Handler[*core.RequestEvent]
 }
 
 // NewDigiflazzProductHandler creates a new DigiflazzProductHandler.
@@ -24,17 +25,46 @@ func NewDigiflazzProductHandler(
 	svc service.DigiflazzProductService,
 	requireAuth func(*core.RequestEvent) error,
 	requireFamily func(*core.RequestEvent) error,
+	requireFamilyOwner func(*core.RequestEvent) error,
 ) *DigiflazzProductHandler {
 	return &DigiflazzProductHandler{
-		service:       svc,
-		requireAuth:   &hook.Handler[*core.RequestEvent]{Func: requireAuth},
-		requireFamily: &hook.Handler[*core.RequestEvent]{Func: requireFamily},
+		service:            svc,
+		requireAuth:        &hook.Handler[*core.RequestEvent]{Func: requireAuth},
+		requireFamily:      &hook.Handler[*core.RequestEvent]{Func: requireFamily},
+		requireFamilyOwner: &hook.Handler[*core.RequestEvent]{Func: requireFamilyOwner},
 	}
 }
 
 // RegisterRoutes registers all Digiflazz product routes.
 func (h *DigiflazzProductHandler) RegisterRoutes(e *core.ServeEvent) {
 	e.Router.GET("/api/digiflazz/products", h.Search).Bind(h.requireAuth).Bind(h.requireFamily)
+	e.Router.POST("/api/digiflazz/products/sync", h.Sync).Bind(h.requireAuth).Bind(h.requireFamily).Bind(h.requireFamilyOwner)
+}
+
+// Sync triggers a manual Digiflazz pricelist sync for the family. Owner only.
+//
+//	@Summary		Sync Digiflazz products
+//	@Description	Triggers an immediate pricelist sync from Digiflazz for the authenticated family. Owner only.
+//	@Tags			digiflazz-products
+//	@Produce		json
+//	@Success		200	{object}	service.SyncResult
+//	@Failure		401	{object}	map[string]any
+//	@Failure		403	{object}	map[string]any
+//	@Failure		500	{object}	map[string]any
+//	@Security		BearerAuth
+//	@Router			/api/digiflazz/products/sync [post]
+func (h *DigiflazzProductHandler) Sync(e *core.RequestEvent) error {
+	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
+	if !ok {
+		return e.InternalServerError("Family context not found", nil)
+	}
+
+	result, err := h.service.SyncForFamily(e.Request.Context(), familyID)
+	if err != nil {
+		return e.InternalServerError("Failed to sync products", err)
+	}
+
+	return e.JSON(http.StatusOK, result)
 }
 
 // Search lists/searches Digiflazz products. Accessible by all family members.

@@ -37,6 +37,7 @@ func (h *DigiflazzOrderHandler) RegisterRoutes(e *core.ServeEvent) {
 	e.Router.GET("/api/digiflazz/orders/{id}", h.Get).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.POST("/api/digiflazz/orders", h.Create).Bind(h.requireAuth).Bind(h.requireFamily)
 	e.Router.POST("/api/digiflazz/orders/{id}/pay", h.Pay).Bind(h.requireAuth).Bind(h.requireFamily)
+	e.Router.GET("/api/digiflazz/pln/inquiry", h.InquiryPLN).Bind(h.requireAuth).Bind(h.requireFamily)
 }
 
 // @Summary List Digiflazz orders
@@ -164,6 +165,37 @@ func (h *DigiflazzOrderHandler) Pay(e *core.RequestEvent) error {
 		return mapDigiflazzOrderError(e, err)
 	}
 	return e.JSON(http.StatusOK, order)
+}
+
+// @Summary PLN customer inquiry
+// @Description Validates a PLN meter number and returns customer details before purchasing a PLN token.
+// @Tags digiflazz-orders
+// @Accept json
+// @Produce json
+// @Param customer_no query string true "PLN meter number or subscriber ID"
+// @Success 200 {object} digiflazz.PLNInquiryResult
+// @Failure 400 {object} map[string]any "Bad request"
+// @Failure 401 {object} map[string]any "Unauthorized"
+// @Failure 403 {object} map[string]any "Forbidden"
+// @Failure 500 {object} map[string]any "Internal server error"
+// @Router /api/digiflazz/pln/inquiry [get]
+// @Security BearerAuth
+func (h *DigiflazzOrderHandler) InquiryPLN(e *core.RequestEvent) error {
+	familyID, ok := middleware.GetFamilyIDFromContext(e.Request.Context())
+	if !ok {
+		return e.InternalServerError("Family context not found", nil)
+	}
+
+	customerNo := strings.TrimSpace(e.Request.URL.Query().Get("customer_no"))
+	if customerNo == "" {
+		return e.BadRequestError("customer_no query parameter is required", nil)
+	}
+
+	result, err := h.service.InquiryPLN(e.Request.Context(), familyID, customerNo)
+	if err != nil {
+		return mapDigiflazzOrderError(e, err)
+	}
+	return e.JSON(http.StatusOK, result)
 }
 
 func mapDigiflazzOrderError(e *core.RequestEvent, err error) error {
