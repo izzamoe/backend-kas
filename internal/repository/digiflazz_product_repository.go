@@ -181,12 +181,12 @@ func (r *digiflazzProductRepo) GetBySKU(familyID, sku string) (*digiflazzdomain.
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, digiflazzdomain.ErrProductNotFound
 		}
 		return nil, fmt.Errorf("digiflazz_product_repo: get by SKU %s: %w", sku, err)
 	}
 	if record == nil {
-		return nil, nil
+		return nil, digiflazzdomain.ErrProductNotFound
 	}
 	return r.recordToDTO(record)
 }

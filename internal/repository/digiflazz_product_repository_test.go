@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"testing"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
@@ -58,12 +59,9 @@ func TestDigiflazzPriceRepository_GetBySKU(t *testing.T) {
 	family := createTestRecord(t, app, "families", map[string]any{"name": "Test Family", "invite_code": "GETSKU01"})
 	repo := NewDigiflazzProductRepository(app)
 
-	missing, err := repo.GetBySKU(family.Id, "nonexistent-sku")
-	if err != nil {
-		t.Fatalf("GetBySKU nonexistent returned error: %v", err)
-	}
-	if missing != nil {
-		t.Fatalf("expected nil for missing SKU, got %+v", missing)
+	_, err := repo.GetBySKU(family.Id, "nonexistent-sku")
+	if !errors.Is(err, digiflazzdomain.ErrProductNotFound) {
+		t.Fatalf("expected ErrProductNotFound for missing SKU, got %v", err)
 	}
 
 	if _, upsertErr := repo.Upsert(&UpsertProductInput{

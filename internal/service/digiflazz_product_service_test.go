@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"testing"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
@@ -114,12 +115,9 @@ func TestDigiflazzPriceService_GetProductBySKU(t *testing.T) {
 		t.Fatal("expected error for empty SKU, got nil")
 	}
 
-	missing, err := svc.GetProductBySKU(familyID, "missing-sku")
-	if err != nil {
-		t.Fatalf("GetProductBySKU missing returned error: %v", err)
-	}
-	if missing != nil {
-		t.Fatalf("expected nil for missing SKU, got %+v", missing)
+	_, err = svc.GetProductBySKU(familyID, "missing-sku")
+	if !errors.Is(err, digiflazzdomain.ErrProductNotFound) {
+		t.Fatalf("expected ErrProductNotFound for missing SKU, got %v", err)
 	}
 
 	seedTestProducts(t, repo, familyID)
