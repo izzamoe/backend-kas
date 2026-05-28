@@ -90,20 +90,3 @@ func MapDigiflazzRC(rc, message string) error {
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzUnknownError}
 	}
 }
-
-func MapDigiflazzError(rc, message string) error {
-	return MapDigiflazzRC(rc, message)
-}
-
-func MapOrderStatus(status string) OrderStatus {
-	switch strings.ToLower(strings.TrimSpace(status)) {
-	case "sukses":
-		return OrderStatusSuccess
-	case "pending":
-		return OrderStatusPending
-	case "gagal":
-		return OrderStatusFailed
-	default:
-		return OrderStatusProcessing
-	}
-}
