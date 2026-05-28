@@ -37,6 +37,8 @@ var (
 	ErrProductNotFound                = errors.New("product not found for your account")
 	ErrAmountRequired                 = errors.New("amount is required and must be a multiple of 1000 for E-Money products")
 	ErrIDPelanggan2Required           = errors.New("id_pelanggan2 (NIK) is required for SAMSAT products")
+	ErrOrderNotFound                  = errors.New("digiflazz order not found")
+	ErrCredentialNotFound             = errors.New("digiflazz credential not found")
 )
 
 type DigiflazzAPIError struct {

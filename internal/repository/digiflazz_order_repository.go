@@ -122,7 +122,7 @@ func (r *digiflazzOrderRepo) GetByID(familyID, id string) (*digiflazzdomain.Orde
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, digiflazzdomain.ErrOrderNotFound
 		}
 		return nil, fmt.Errorf("failed to find digiflazz order: %w", err)
 	}
@@ -138,7 +138,7 @@ func (r *digiflazzOrderRepo) GetByIDAny(id string) (*digiflazzdomain.OrderDTO, e
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, digiflazzdomain.ErrOrderNotFound
 		}
 		return nil, fmt.Errorf("failed to find digiflazz order: %w", err)
 	}
@@ -170,7 +170,7 @@ func (r *digiflazzOrderRepo) UpdateStatus(familyID, id string, params UpdateDigi
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, digiflazzdomain.ErrOrderNotFound
 		}
 		return nil, fmt.Errorf("failed to find digiflazz order for status update: %w", err)
 	}
@@ -212,7 +212,7 @@ func (r *digiflazzOrderRepo) LinkTransactionIfEmpty(familyID, id, transactionID 
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, digiflazzdomain.ErrOrderNotFound
 		}
 		return nil, fmt.Errorf("failed to find digiflazz order for transaction link: %w", err)
 	}

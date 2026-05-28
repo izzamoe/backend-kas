@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	_ "kas/migrations"
 	"testing"
@@ -70,11 +71,8 @@ func TestDigiflazzOrderRepositoryCreateGetListAndUpdate(t *testing.T) {
 	}
 
 	wrongFamilyFound, err := repo.GetByID(otherFamily.Id, created.ID)
-	if err != nil {
-		t.Fatalf("cross-family GetByID returned error: %v", err)
-	}
-	if wrongFamilyFound != nil {
-		t.Fatalf("expected cross-family GetByID to return nil, got %+v", wrongFamilyFound)
+	if !errors.Is(err, digiflazzdomain.ErrOrderNotFound) {
+		t.Fatalf("expected cross-family GetByID to return ErrOrderNotFound, got err=%v result=%+v", err, wrongFamilyFound)
 	}
 
 	byRef, err := repo.GetByRefID(familyID, created.RefID)
@@ -115,12 +113,9 @@ func TestDigiflazzOrderRepositoryCreateGetListAndUpdate(t *testing.T) {
 		t.Fatalf("unexpected updated status order: %+v", updated)
 	}
 
-	missing, err := repo.UpdateStatus(otherFamily.Id, created.ID, UpdateDigiflazzOrderStatusParams{Status: digiflazzdomain.OrderStatusSuccess})
-	if err != nil {
-		t.Fatalf("cross-family UpdateStatus returned error: %v", err)
-	}
-	if missing != nil {
-		t.Fatalf("expected cross-family update to return nil, got %+v", missing)
+	_, err = repo.UpdateStatus(otherFamily.Id, created.ID, UpdateDigiflazzOrderStatusParams{Status: digiflazzdomain.OrderStatusSuccess})
+	if !errors.Is(err, digiflazzdomain.ErrOrderNotFound) {
+		t.Fatalf("expected cross-family UpdateStatus to return ErrOrderNotFound, got %v", err)
 	}
 }
 

@@ -247,14 +247,14 @@ func TestDigiflazzOrderServiceUpdateStatusTransitions(t *testing.T) {
 func TestDigiflazzOrderServiceUpdateStatusMissingOrder(t *testing.T) {
 	repo := &mockDigiflazzOrderRepo{
 		getByIDFn: func(familyID, id string) (*digiflazzdomain.OrderDTO, error) {
-			return nil, nil
+			return nil, digiflazzdomain.ErrOrderNotFound
 		},
 	}
 	service := NewDigiflazzOrderService(repo, DigiflazzOrderServiceDeps{})
 
 	_, err := service.UpdateStatus("fam1", "missing", digiflazzdomain.OrderStatusProcessing, nil)
-	if err == nil || !strings.Contains(err.Error(), "digiflazz order not found") {
-		t.Fatalf("expected missing order error, got %v", err)
+	if err == nil || !errors.Is(err, digiflazzdomain.ErrOrderNotFound) {
+		t.Fatalf("expected ErrOrderNotFound, got %v", err)
 	}
 }
 
