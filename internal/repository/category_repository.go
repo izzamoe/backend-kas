@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"kas/generated"
+	"kas/internal/domain"
 
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -33,12 +34,12 @@ func NewCategoryRepository(app core.App) CategoryRepository {
 	return &categoryRepo{app: app}
 }
 
-// GetByID retrieves a category by its unique ID. Returns nil, nil if the category is not found.
+// GetByID retrieves a category by its unique ID. Returns domain.ErrCategoryNotFound if the category is not found.
 func (r *categoryRepo) GetByID(id string) (*CategoryInfo, error) {
 	record, err := r.app.FindRecordById("categories", id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, domain.ErrCategoryNotFound
 		}
 		return nil, fmt.Errorf("failed to find category: %w", err)
 	}

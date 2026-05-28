@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"testing"
 
 	"kas/internal/domain"
@@ -184,12 +185,9 @@ func TestCategoryRepositoryIntegration(t *testing.T) {
 		t.Fatalf("unexpected category: %+v", category)
 	}
 
-	missing, err := repo.GetByID("missingcategory")
-	if err != nil {
-		t.Fatalf("GetByID missing returned error: %v", err)
-	}
-	if missing != nil {
-		t.Fatalf("expected nil missing category, got %+v", missing)
+	_, err = repo.GetByID("missingcategory")
+	if !errors.Is(err, domain.ErrCategoryNotFound) {
+		t.Fatalf("expected ErrCategoryNotFound for missing category, got %v", err)
 	}
 }
 
