@@ -10,14 +10,11 @@ import (
 // Queries covered:
 //
 // digiflazz_credentials:
-//   - GetSecretByWebhookTokenHash → webhook_token_hash (exact lookup)
 //   - GetSecretByFamilyID, ListByFamilyID, CountByFamilyID → family_id
 //   - ListAllActive → family_id + is_active (composite)
 //
 // digiflazz_events:
-//   - findByOrderAndHash → order_id (full scan → index scan)
-//   - ExistsByOrderAndPayloadHash → order_id + payload_hash (composite)
-//   - ListByFamilyID uses relation join order_id.family_id → covered by order index
+//   - findByOrderAndHash / ExistsByOrderAndPayloadHash → order_id (payload_hash is not a SQL column)
 //
 // digiflazz_orders:
 //   - GetByRefID → family_id + ref_id (composite, unique in practice)
@@ -35,13 +32,6 @@ import (
 func init() {
 	m.Register(func(app core.App) error {
 		// ── digiflazz_credentials ──────────────────────────────────────────────
-		// webhook token lookup (webhook handler hot path)
-		if _, err := app.DB().NewQuery(
-			`CREATE UNIQUE INDEX IF NOT EXISTS idx_dfc_webhook_token_hash ON digiflazz_credentials (webhook_token_hash)`,
-		).Execute(); err != nil {
-			return err
-		}
-
 		// family_id lookups and active filter
 		if _, err := app.DB().NewQuery(
 			`CREATE INDEX IF NOT EXISTS idx_dfc_family_id ON digiflazz_credentials (family_id)`,
@@ -59,13 +49,6 @@ func init() {
 		// findByOrderAndHash: filters order_id, then in-memory hash compare
 		if _, err := app.DB().NewQuery(
 			`CREATE INDEX IF NOT EXISTS idx_dfe_order_id ON digiflazz_events (order_id)`,
-		).Execute(); err != nil {
-			return err
-		}
-
-		// duplicate check: order_id + payload_hash together
-		if _, err := app.DB().NewQuery(
-			`CREATE INDEX IF NOT EXISTS idx_dfe_order_payload_hash ON digiflazz_events (order_id, payload_hash)`,
 		).Execute(); err != nil {
 			return err
 		}
@@ -145,11 +128,9 @@ func init() {
 		return nil
 	}, func(app core.App) error {
 		queries := []string{
-			`DROP INDEX IF EXISTS idx_dfc_webhook_token_hash`,
 			`DROP INDEX IF EXISTS idx_dfc_family_id`,
 			`DROP INDEX IF EXISTS idx_dfc_family_active`,
 			`DROP INDEX IF EXISTS idx_dfe_order_id`,
-			`DROP INDEX IF EXISTS idx_dfe_order_payload_hash`,
 			`DROP INDEX IF EXISTS idx_dfo_family_ref_id`,
 			`DROP INDEX IF EXISTS idx_dfo_family_created`,
 			`DROP INDEX IF EXISTS idx_dfo_status_created`,
