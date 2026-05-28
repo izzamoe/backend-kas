@@ -275,6 +275,9 @@ func mapCredentialError(e *core.RequestEvent, err error) error {
 	if err == nil {
 		return nil
 	}
+	if errors.Is(err, digiflazzdomain.ErrCredentialNotFound) {
+		return e.NotFoundError("Credential not found", err)
+	}
 	msg := err.Error()
 	lower := strings.ToLower(msg)
 

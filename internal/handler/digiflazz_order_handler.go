@@ -211,6 +211,9 @@ func mapDigiflazzOrderError(e *core.RequestEvent, err error) error {
 	if errors.Is(err, digiflazzdomain.ErrIDPelanggan2Required) {
 		return e.BadRequestError("id_pelanggan2 (NIK) is required for SAMSAT products", err)
 	}
+	if errors.Is(err, digiflazzdomain.ErrOrderNotFound) {
+		return e.NotFoundError("Digiflazz order not found", err)
+	}
 	lower := strings.ToLower(err.Error())
 	if strings.Contains(lower, "unauthorized") || strings.Contains(lower, "not a member") {
 		return e.ForbiddenError("Access denied", errors.New(err.Error()))

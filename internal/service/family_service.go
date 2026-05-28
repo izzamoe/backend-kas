@@ -124,7 +124,7 @@ func (s *familyService) JoinFamily(req *domain.JoinFamilyRequest, userID string)
 		return nil, fmt.Errorf("failed to find family: %w", err)
 	}
 	if familyDTO == nil {
-		return nil, errors.New("invalid invite code")
+		return nil, domain.ErrInvalidInviteCode
 	}
 
 	if err := s.familyMemberRepo.CreateMember(s.app, familyDTO.ID, userID, "member"); err != nil {

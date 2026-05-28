@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"kas/internal/domain"
 	"kas/internal/service"
 	"net/http"
@@ -77,7 +78,7 @@ func (h *FamilyHandler) Join(e *core.RequestEvent) error {
 
 	family, err := h.service.JoinFamily(&req, e.Auth.Id)
 	if err != nil {
-		if err.Error() == "invalid invite code" {
+		if errors.Is(err, domain.ErrInvalidInviteCode) {
 			return e.NotFoundError("Family not found", err)
 		}
 
