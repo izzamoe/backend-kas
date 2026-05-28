@@ -81,7 +81,7 @@ func (h *DigiflazzWebhookHandler) Receive(e *core.RequestEvent) error {
 		return e.NotFoundError("Webhook not found", nil)
 	}
 
-	rawBody, err := io.ReadAll(e.Request.Body)
+	rawBody, err := io.ReadAll(io.LimitReader(e.Request.Body, 1<<14))
 	if err != nil {
 		return e.BadRequestError("Invalid webhook body", err)
 	}
