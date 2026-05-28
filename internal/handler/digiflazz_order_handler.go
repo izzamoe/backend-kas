@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
@@ -59,15 +58,7 @@ func (h *DigiflazzOrderHandler) List(e *core.RequestEvent) error {
 		return e.InternalServerError("Family context not found", nil)
 	}
 
-	query := e.Request.URL.Query()
-	page, _ := strconv.Atoi(query.Get("page"))
-	pageSize, _ := strconv.Atoi(query.Get("page_size"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
+	page, pageSize := ParsePagination(e.Request.URL.Query())
 
 	orders, err := h.service.ListFamilyOrders(familyID, page, pageSize)
 	if err != nil {

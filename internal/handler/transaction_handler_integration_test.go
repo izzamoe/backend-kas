@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 	"kas/internal/handler"
 	"kas/internal/middleware"
 	"kas/internal/repository"
 	"kas/internal/service"
 	_ "kas/migrations"
+
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
 )
 
 func newTransactionTestApp(t testing.TB) *tests.TestApp {
@@ -437,7 +438,7 @@ func TestTransactionHandler(t *testing.T) {
 				"Authorization": "Bearer " + token,
 			},
 			ExpectedStatus:  http.StatusOK,
-			ExpectedContent: []string{`"items"`, `"page"`, `"pageSize"`},
+			ExpectedContent: []string{`"items"`, `"page"`, `"page_size"`},
 			TestAppFactory: func(t testing.TB) *tests.TestApp {
 				return app
 			},

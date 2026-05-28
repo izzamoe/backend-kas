@@ -87,7 +87,10 @@ func (h *DigiflazzProductHandler) Sync(e *core.RequestEvent) error {
 func (h *DigiflazzProductHandler) Search(e *core.RequestEvent) error {
 	query := e.Request.URL.Query()
 
-	limit, _ := strconv.Atoi(query.Get("per_page"))
+	limit, _ := strconv.Atoi(query.Get("page_size"))
+	if limit == 0 {
+		limit, _ = strconv.Atoi(query.Get("per_page"))
+	}
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}

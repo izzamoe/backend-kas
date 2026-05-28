@@ -185,17 +185,7 @@ func (h *TransactionHandler) GetByFamily(e *core.RequestEvent) error {
 		return e.ForbiddenError("Cannot access another family's transactions", nil)
 	}
 
-	// Get pagination params
-	page, _ := strconv.Atoi(e.Request.URL.Query().Get("page"))
-	pageSize, _ := strconv.Atoi(e.Request.URL.Query().Get("pageSize"))
-
-	// Normalize here so response matches what was actually queried
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
+	page, pageSize := ParsePagination(e.Request.URL.Query())
 
 	transactions, err := h.service.GetFamilyTransactions(familyID, page, pageSize)
 	if err != nil {
@@ -203,9 +193,9 @@ func (h *TransactionHandler) GetByFamily(e *core.RequestEvent) error {
 	}
 
 	return e.JSON(http.StatusOK, map[string]any{
-		"items":    transactions,
-		"page":     page,
-		"pageSize": pageSize,
+		"items":     transactions,
+		"page":      page,
+		"page_size": pageSize,
 	})
 }
 
