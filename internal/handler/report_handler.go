@@ -5,7 +5,6 @@ import (
 	"kas/internal/middleware"
 	"kas/internal/repository"
 	"kas/internal/service"
-	"log"
 	"strconv"
 	"time"
 
@@ -93,7 +92,7 @@ func (h *ReportHandler) GetMonthlyReport(e *core.RequestEvent) error {
 	// Get report from service
 	report, err := h.reportService.GetMonthlyReport(req)
 	if err != nil {
-		log.Printf("Error generating report: %v", err)
+		e.App.Logger().Error("failed to generate monthly report", "family_id", familyID, "year", year, "month", month, "error", err)
 		return e.InternalServerError("Failed to generate report", err)
 	}
 
@@ -153,7 +152,7 @@ func (h *ReportHandler) GetDashboardSummary(e *core.RequestEvent) error {
 	// Get summary from service
 	summary, err := h.reportService.GetDashboardSummary(req)
 	if err != nil {
-		log.Printf("Error generating dashboard summary: %v", err)
+		e.App.Logger().Error("failed to generate dashboard summary", "family_id", familyID, "year", year, "month", month, "error", err)
 		return e.InternalServerError("Failed to generate summary", err)
 	}
 
@@ -161,7 +160,7 @@ func (h *ReportHandler) GetDashboardSummary(e *core.RequestEvent) error {
 
 	familyName, err := h.familyMemberRepo.GetFamilyName(familyID)
 	if err != nil {
-		log.Printf("Error fetching family name: %v", err)
+		e.App.Logger().Error("failed to fetch family name", "family_id", familyID, "error", err)
 		return e.InternalServerError("Failed to fetch family name", err)
 	}
 	summary.FamilyName = familyName
