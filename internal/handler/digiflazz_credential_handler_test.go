@@ -330,7 +330,6 @@ func TestDigiflazzCredentialHandler_TestWebhookForbiddenForMember(t *testing.T) 
 	app := newDigiflazzCredentialTestApp(t)
 	_, familyID, _ := seedDigiflazzCredentialTestData(t, app)
 	memberToken, _ := seedDigiflazzCredentialMemberToken(t, app, familyID)
-	middleware.ClearRoleCache()
 
 	svc := &fakeCredentialService{}
 
@@ -700,7 +699,6 @@ func TestCredential_Upsert_NonOwner_Forbidden(t *testing.T) {
 	app := newDigiflazzCredentialTestApp(t)
 	_, familyID, _ := seedDigiflazzCredentialTestData(t, app)
 	memberToken, _ := seedDigiflazzCredentialMemberToken(t, app, familyID)
-	middleware.ClearRoleCache()
 
 	svc := &fakeCredentialService{}
 

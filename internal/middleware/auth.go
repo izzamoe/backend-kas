@@ -27,10 +27,14 @@ var cache = &familyCache{
 
 // get returns cached familyID if valid, empty string if expired/missing
 func (c *familyCache) get(userID string) (string, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	entry, ok := c.entries[userID]
-	if !ok || time.Now().After(entry.expiresAt) {
+	if !ok {
+		return "", false
+	}
+	if time.Now().After(entry.expiresAt) {
+		delete(c.entries, userID)
 		return "", false
 	}
 	return entry.familyID, true

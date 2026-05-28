@@ -9,7 +9,6 @@ import (
 
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
-	"kas/internal/middleware"
 	"kas/internal/repository"
 	_ "kas/migrations"
 
@@ -41,9 +40,6 @@ type digiflazzE2EFixture struct {
 func setupDigiflazzE2EFixture(t *testing.T) *digiflazzE2EFixture {
 	t.Helper()
 	t.Setenv(digiflazzCredentialEncryptionKeyEnv, "test-encryption-key-32bytes!")
-
-	// Clear role cache to avoid stale entries from other tests in the same process
-	middleware.ClearRoleCache()
 
 	app, err := tests.NewTestApp()
 	if err != nil {
