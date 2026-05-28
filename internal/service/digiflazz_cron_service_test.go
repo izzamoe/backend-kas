@@ -192,7 +192,7 @@ func TestDigiflazzCronPriceSyncCallsServiceForEachCredential(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewDigiflazzCronService(productSvc, nil, credRepo, nil, nil)
+	svc := NewDigiflazzCronService(nil, productSvc, nil, credRepo, nil, nil)
 	svc.RunPriceSync()
 
 	if len(syncedIDs) != 2 {
@@ -223,7 +223,7 @@ func TestDigiflazzCronPriceSyncFailSoftContinuesOnError(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewDigiflazzCronService(productSvc, nil, credRepo, nil, eventRepo)
+	svc := NewDigiflazzCronService(nil, productSvc, nil, credRepo, nil, eventRepo)
 	svc.RunPriceSync()
 
 	if len(syncedIDs) != 1 || syncedIDs[0] != "cred2" {
@@ -250,7 +250,7 @@ func TestDigiflazzCronOrderPollFindsAndProcessesPendingOrders(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewDigiflazzCronService(nil, orderSvc, nil, orderRepo, nil)
+	svc := NewDigiflazzCronService(nil, nil, orderSvc, nil, orderRepo, nil)
 	svc.RunOrderPoll()
 
 	if len(checkedIDs) != 2 {
@@ -281,7 +281,7 @@ func TestDigiflazzCronOrderPollFailSoftContinuesOnError(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewDigiflazzCronService(nil, orderSvc, nil, orderRepo, eventRepo)
+	svc := NewDigiflazzCronService(nil, nil, orderSvc, nil, orderRepo, eventRepo)
 	svc.RunOrderPoll()
 
 	if len(checkedIDs) != 1 || checkedIDs[0] != "order2" {
@@ -309,7 +309,7 @@ func TestDigiflazzCronPriceSyncLockPreventsOverlap(t *testing.T) {
 			return []*repository.DigiflazzCredentialRecord{{ID: "cred1"}}, nil
 		},
 	}
-	svc := NewDigiflazzCronService(productSvc, nil, credRepo, nil, nil)
+	svc := NewDigiflazzCronService(nil, productSvc, nil, credRepo, nil, nil)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -342,7 +342,7 @@ func TestDigiflazzCronOrderPollLockPreventsOverlap(t *testing.T) {
 			return []*digiflazzdomain.OrderDTO{{ID: "order1"}}, nil
 		},
 	}
-	svc := NewDigiflazzCronService(nil, orderSvc, nil, orderRepo, nil)
+	svc := NewDigiflazzCronService(nil, nil, orderSvc, nil, orderRepo, nil)
 
 	var wg sync.WaitGroup
 	wg.Add(2)

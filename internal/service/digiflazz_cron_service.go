@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
+
+	"github.com/pocketbase/pocketbase/core"
 )
 
 type DigiflazzCronService interface {
@@ -18,16 +19,18 @@ type DigiflazzCronService interface {
 }
 
 type digiflazzCronService struct {
-	productService   DigiflazzProductService
-	orderService     DigiflazzOrderService
-	credentialRepo   repository.DigiflazzCredentialRepository
-	orderRepo        repository.DigiflazzOrderRepository
-	eventRepo        repository.DigiflazzEventRepository
-	priceSyncLock    sync.Mutex
-	orderPollLock    sync.Mutex
+	app            core.App
+	productService DigiflazzProductService
+	orderService   DigiflazzOrderService
+	credentialRepo repository.DigiflazzCredentialRepository
+	orderRepo      repository.DigiflazzOrderRepository
+	eventRepo      repository.DigiflazzEventRepository
+	priceSyncLock  sync.Mutex
+	orderPollLock  sync.Mutex
 }
 
 func NewDigiflazzCronService(
+	app core.App,
 	productService DigiflazzProductService,
 	orderService DigiflazzOrderService,
 	credentialRepo repository.DigiflazzCredentialRepository,
@@ -35,6 +38,7 @@ func NewDigiflazzCronService(
 	eventRepo repository.DigiflazzEventRepository,
 ) DigiflazzCronService {
 	return &digiflazzCronService{
+		app:            app,
 		productService: productService,
 		orderService:   orderService,
 		credentialRepo: credentialRepo,
@@ -45,7 +49,7 @@ func NewDigiflazzCronService(
 
 func (s *digiflazzCronService) RunPriceSync() {
 	if !s.priceSyncLock.TryLock() {
-		log.Println("digiflazz price sync skipped: already running")
+		s.logInfo("digiflazz price sync skipped: already running")
 		return
 	}
 	defer s.priceSyncLock.Unlock()
@@ -55,7 +59,7 @@ func (s *digiflazzCronService) RunPriceSync() {
 
 	creds, err := s.credentialRepo.ListAllActive()
 	if err != nil {
-		log.Printf("digiflazz price sync failed: list active credentials: %v", err)
+		s.logError("digiflazz price sync failed: list active credentials", "error", err)
 		s.recordCronEvent("", "price_sync", "", fmt.Sprintf("list credentials: %v", err))
 		return
 	}
@@ -63,7 +67,7 @@ func (s *digiflazzCronService) RunPriceSync() {
 	for _, cred := range creds {
 		_, syncErr := s.productService.SyncPricelistWithCredential(ctx, cred)
 		if syncErr != nil {
-			log.Printf("digiflazz price sync failed for credential %s: %v", cred.ID, syncErr)
+			s.logError("digiflazz price sync failed", "credential_id", cred.ID, "error", syncErr)
 			s.recordCronEvent("", "price_sync", cred.ID, syncErr.Error())
 		}
 	}
@@ -71,7 +75,7 @@ func (s *digiflazzCronService) RunPriceSync() {
 
 func (s *digiflazzCronService) RunOrderPoll() {
 	if !s.orderPollLock.TryLock() {
-		log.Println("digiflazz order poll skipped: already running")
+		s.logInfo("digiflazz order poll skipped: already running")
 		return
 	}
 	defer s.orderPollLock.Unlock()
@@ -82,7 +86,7 @@ func (s *digiflazzCronService) RunOrderPoll() {
 	createdAfter := time.Now().UTC().Add(-24 * time.Hour)
 	orders, err := s.orderRepo.ListPendingForPoll(createdAfter, 0)
 	if err != nil {
-		log.Printf("digiflazz order poll failed: list pending orders: %v", err)
+		s.logError("digiflazz order poll failed: list pending orders", "error", err)
 		s.recordCronEvent("", "order_poll", "", fmt.Sprintf("list pending orders: %v", err))
 		return
 	}
@@ -90,7 +94,7 @@ func (s *digiflazzCronService) RunOrderPoll() {
 	for _, order := range orders {
 		_, updateErr := s.orderService.CheckAndUpdateStatus(ctx, order.ID)
 		if updateErr != nil {
-			log.Printf("digiflazz order poll failed for order %s: %v", order.ID, updateErr)
+			s.logError("digiflazz order poll failed", "order_id", order.ID, "error", updateErr)
 			s.recordCronEvent(order.ID, "order_poll", "", updateErr.Error())
 		}
 	}
@@ -118,6 +122,18 @@ func (s *digiflazzCronService) recordCronEvent(orderID, source, credentialID, me
 		CreatedBy:   "system",
 	})
 	if err != nil {
-		log.Printf("digiflazz cron event recording failed: %v", err)
+		s.logError("digiflazz cron event recording failed", "error", err)
+	}
+}
+
+func (s *digiflazzCronService) logInfo(msg string, args ...any) {
+	if s.app != nil {
+		s.app.Logger().Info(msg, args...)
+	}
+}
+
+func (s *digiflazzCronService) logError(msg string, args ...any) {
+	if s.app != nil {
+		s.app.Logger().Error(msg, args...)
 	}
 }
