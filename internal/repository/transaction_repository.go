@@ -49,7 +49,6 @@ type TransactionRepository interface {
 	GetCreatorID(id string) (string, error)
 	GetByFamilyID(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
 	GetByFamilyDateRange(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error)
-	GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error)
 	Update(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
 	Delete(id string) error
 	GetTotalByFamily(familyID string) (float64, error)
@@ -211,40 +210,6 @@ func (r *transactionRepo) GetByFamilyDateRange(familyID, startDate, endDate stri
 	}
 
 	return dtos, totalItems, nil
-}
-
-func (r *transactionRepo) GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error) {
-	startDate, endDate := dateRange(year, month)
-
-	records, err := r.app.FindRecordsByFilter(
-		"transactions",
-		"family_id = {:familyID} && date >= {:startDate} && date < {:endDate}",
-		"-date", // Sort by date descending
-		-1,      // No limit
-		0,
-		map[string]any{
-			"familyID":  familyID,
-			"startDate": startDate,
-			"endDate":   endDate,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Expand relations for all records
-	r.app.ExpandRecords(records, defaultExpandFields, nil)
-
-	dtos := make([]*domain.TransactionDTO, 0, len(records))
-	for _, record := range records {
-		dto, err := r.recordToDTO(record)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert record %s: %w", record.Id, err)
-		}
-		dtos = append(dtos, dto)
-	}
-
-	return dtos, nil
 }
 
 // Update transaction

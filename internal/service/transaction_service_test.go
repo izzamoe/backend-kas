@@ -18,7 +18,6 @@ type mockTransactionRepo struct {
 	getCreatorIDFn         func(id string) (string, error)
 	getByFamilyIDFn        func(familyID string, limit, offset int) ([]*domain.TransactionDTO, error)
 	getByFamilyDateRangeFn func(familyID, startDate, endDate string, limit, offset int) ([]*domain.TransactionDTO, int, error)
-	getByFamilyAndMonthFn  func(familyID string, year, month int) ([]*domain.TransactionDTO, error)
 	updateFn               func(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error)
 	deleteFn               func(id string) error
 	getTotalByFamilyFn     func(familyID string) (float64, error)
@@ -60,13 +59,6 @@ func (m *mockTransactionRepo) GetByFamilyDateRange(familyID, startDate, endDate 
 		return m.getByFamilyDateRangeFn(familyID, startDate, endDate, limit, offset)
 	}
 	return nil, 0, nil
-}
-
-func (m *mockTransactionRepo) GetByFamilyAndMonth(familyID string, year, month int) ([]*domain.TransactionDTO, error) {
-	if m.getByFamilyAndMonthFn != nil {
-		return m.getByFamilyAndMonthFn(familyID, year, month)
-	}
-	return nil, nil
 }
 
 func (m *mockTransactionRepo) Update(id string, req *domain.UpdateTransactionRequest) (*domain.TransactionDTO, error) {

@@ -251,14 +251,6 @@ func TestTransactionRepositoryIntegration(t *testing.T) {
 		t.Fatalf("expected 2 paged transactions, got %d", len(page))
 	}
 
-	marchTransactions, err := repo.GetByFamilyAndMonth(familyID, 2026, 3)
-	if err != nil {
-		t.Fatalf("GetByFamilyAndMonth returned error: %v", err)
-	}
-	if len(marchTransactions) != 2 {
-		t.Fatalf("expected 2 March transactions, got %d", len(marchTransactions))
-	}
-
 	rangedTransactions, totalItems, err := repo.GetByFamilyDateRange(familyID, "2026-03-01", "2026-04-01", 1, 0)
 	if err != nil {
 		t.Fatalf("GetByFamilyDateRange returned error: %v", err)

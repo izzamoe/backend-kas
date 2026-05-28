@@ -4,8 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pocketbase/pocketbase"
 	_ "kas/migrations"
+
+	"github.com/pocketbase/pocketbase"
 
 	"kas/internal/repository"
 )
@@ -55,20 +56,6 @@ func BenchmarkGetMonthlyStats(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_, _, _ = repo.GetMonthlyStats(familyID, 2026, 3)
-	}
-}
-
-func BenchmarkGetByFamilyAndMonth(b *testing.B) {
-	app := setupTestApp(b)
-	defer app.ResetBootstrapState()
-	repo := repository.NewTransactionRepository(app)
-
-	const familyID = "test_family_001"
-
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		_, _ = repo.GetByFamilyAndMonth(familyID, 2026, 3)
 	}
 }
 
