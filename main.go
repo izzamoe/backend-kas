@@ -86,7 +86,7 @@ func main() {
 		TransactionRepo: transactionRepo,
 		CategoryRepo:    categoryRepo,
 	})
-	digiflazzCronService := service.NewDigiflazzCronService(digiflazzProductService, digiflazzOrderService, digiflazzCredentialRepo, digiflazzOrderRepo, digiflazzEventRepo)
+	digiflazzCronService := service.NewDigiflazzCronService(app, digiflazzProductService, digiflazzOrderService, digiflazzCredentialRepo, digiflazzOrderRepo, digiflazzEventRepo)
 
 	// Handler layer
 	transactionHandler := handler.NewTransactionHandler(transactionService, middleware.RequireAuth, requireFamily)
@@ -117,7 +117,7 @@ func main() {
 	app.OnRecordAfterCreateSuccess("families").BindFunc(func(e *core.RecordEvent) error {
 		familyID := e.Record.Id
 		if err := categoryRepo.SeedMasterCategories(e.App, familyID); err != nil {
-			log.Printf("WARNING: failed to seed master categories for family %s: %v", familyID, err)
+			e.App.Logger().Warn("failed to seed master categories", "family_id", familyID, "error", err)
 		}
 		return nil
 	})
