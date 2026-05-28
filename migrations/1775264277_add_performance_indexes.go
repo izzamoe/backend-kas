@@ -13,7 +13,7 @@ func init() {
 			return err
 		}
 
-		// Composite index for: GetByFamilyAndMonth, GetMonthlyStats (family + date range)
+		// Composite index for: GetMonthlyStats, GetByFamilyDateRange (family + date range)
 		_, err = app.DB().NewQuery(`CREATE INDEX IF NOT EXISTS idx_transactions_family_date ON transactions (family_id, date)`).Execute()
 		if err != nil {
 			return err
