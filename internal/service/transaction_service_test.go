@@ -232,7 +232,7 @@ func TestCreateTransaction(t *testing.T) {
 			userID:   "user1",
 			familyID: "",
 			mockGetCategoryByID: func(id string) (*repository.CategoryInfo, error) {
-				return nil, nil
+				return nil, domain.ErrCategoryNotFound
 			},
 			wantErr: true,
 			errMsg:  "category not found",
@@ -696,7 +696,7 @@ func TestUpdateTransaction(t *testing.T) {
 				}
 			} else if tt.req.CategoryID == "missing" {
 				categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {
-					return nil, nil
+					return nil, domain.ErrCategoryNotFound
 				}
 			} else if tt.req.CategoryID != "" {
 				categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {

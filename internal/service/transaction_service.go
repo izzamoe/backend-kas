@@ -52,11 +52,11 @@ func (s *transactionService) CreateTransaction(req *domain.CreateTransactionRequ
 
 	// Validate category belongs to family (or is a default category)
 	category, err := s.categoryRepo.GetByID(req.CategoryID)
+	if errors.Is(err, domain.ErrCategoryNotFound) {
+		return nil, domain.ErrCategoryNotFound
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate category: %w", err)
-	}
-	if category == nil {
-		return nil, errors.New("category not found")
 	}
 	if !category.IsDefault && category.FamilyID != familyID {
 		return nil, errors.New("category does not belong to this family")
@@ -155,12 +155,12 @@ func (s *transactionService) UpdateTransaction(id, userID string, req *domain.Up
 
 	// Validate category if being updated
 	if req.CategoryID != "" {
-		category, err := s.categoryRepo.GetByID(req.CategoryID)
+		_, err := s.categoryRepo.GetByID(req.CategoryID)
+		if errors.Is(err, domain.ErrCategoryNotFound) {
+			return nil, domain.ErrCategoryNotFound
+		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate category: %w", err)
-		}
-		if category == nil {
-			return nil, errors.New("category not found")
 		}
 	}
 
