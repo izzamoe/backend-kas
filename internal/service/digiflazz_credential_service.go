@@ -13,6 +13,8 @@ import (
 	"kas/internal/utils"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -37,6 +39,9 @@ type digiflazzCredentialService struct {
 	productService DigiflazzProductService
 	app            core.App
 	clientFactory  DigiflazzClientFactory
+
+	syncMu       sync.Mutex
+	syncInFlight map[string]struct{}
 }
 
 func NewDigiflazzCredentialService(
@@ -62,6 +67,7 @@ func NewDigiflazzCredentialService(
 		productService: productService,
 		app:            app,
 		clientFactory:  clientFactory,
+		syncInFlight:   make(map[string]struct{}),
 	}
 }
 
@@ -182,7 +188,7 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 	if err != nil || freshCred == nil {
 		s.app.Logger().Error("failed to re-fetch credential for async sync", "family_id", familyID)
 	} else {
-		go s.triggerAsyncProductSync(freshCred)
+		s.spawnProductSync(ctx, freshCred)
 	}
 
 	return &digiflazzdomain.UpsertCredentialResult{
@@ -192,11 +198,30 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 	}, nil
 }
 
-func (s *digiflazzCredentialService) triggerAsyncProductSync(credential *repository.DigiflazzCredentialRecord) {
-	ctx := context.Background()
-	if _, err := s.productService.SyncPricelistWithCredential(ctx, credential); err != nil {
-		s.app.Logger().Error("async product sync failed", "error", err, "family_id", credential.FamilyID)
+func (s *digiflazzCredentialService) spawnProductSync(ctx context.Context, credential *repository.DigiflazzCredentialRecord) {
+	s.syncMu.Lock()
+	if _, running := s.syncInFlight[credential.FamilyID]; running {
+		s.syncMu.Unlock()
+		s.app.Logger().Info("product sync already in flight, skipping", "family_id", credential.FamilyID)
+		return
 	}
+	s.syncInFlight[credential.FamilyID] = struct{}{}
+	s.syncMu.Unlock()
+
+	go func() {
+		defer func() {
+			s.syncMu.Lock()
+			delete(s.syncInFlight, credential.FamilyID)
+			s.syncMu.Unlock()
+		}()
+
+		syncCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		defer cancel()
+
+		if _, err := s.productService.SyncPricelistWithCredential(syncCtx, credential); err != nil {
+			s.app.Logger().Error("async product sync failed", "error", err, "family_id", credential.FamilyID)
+		}
+	}()
 }
 
 func (s *digiflazzCredentialService) DeleteCredential(ctx context.Context, familyID, userID string) error {
