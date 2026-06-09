@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/pocketbase/dbx v1.12.0
-	github.com/pocketbase/pocketbase v0.39.2
+	github.com/pocketbase/pocketbase v0.39.3
 )
 
 require (
