@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"time"
 
-	"kas/generated"
-	digiflazzdomain "kas/internal/domain/digiflazz"
-	"kas/internal/utils"
-
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
+
+	"kas/generated"
+	digiflazzdomain "kas/internal/domain/digiflazz"
+	"kas/internal/utils"
 )
 
 const digiflazzEventsCollection = "digiflazz_events"
@@ -129,21 +129,21 @@ func (r *digiflazzEventRepo) Create(data *DigiflazzEventCreateData) (*DigiflazzE
 			return fmt.Errorf("failed to create digiflazz event proxy: %w", err)
 		}
 
-		proxy.Record.Set("order_id", data.OrderID)
+		proxy.Set("order_id", data.OrderID)
 		if err := setDigiflazzEventType(proxy.Record, data.EventType); err != nil {
 			return err
 		}
 		proxy.SetStatusBefore(data.StatusBefore)
 		proxy.SetStatusAfter(data.StatusAfter)
 		proxy.SetSource(data.Source)
-		proxy.Record.Set("rc", data.RC)
-		proxy.Record.Set("message", data.Message)
-		proxy.Record.Set("sn", data.SN)
+		proxy.Set("rc", data.RC)
+		proxy.Set("message", data.Message)
+		proxy.Set("sn", data.SN)
 		proxy.SetPayload(redactedPayload)
-		proxy.Record.Set("redacted_payload", redactedPayload)
-		proxy.Record.Set("payload_hash", payloadHash)
-		proxy.Record.Set("processed_at", processedAt)
-		proxy.Record.Set("created_by", data.CreatedBy)
+		proxy.Set("redacted_payload", redactedPayload)
+		proxy.Set("payload_hash", payloadHash)
+		proxy.Set("processed_at", processedAt)
+		proxy.Set("created_by", data.CreatedBy)
 		proxy.SetResponse(mustMarshalDigiflazzEventResponse(digiflazzEventResponseEnvelope{
 			PayloadHash:  payloadHash,
 			RC:           data.RC,
@@ -303,7 +303,7 @@ func (r *digiflazzEventRepo) recordToRecord(record *core.Record) (*DigiflazzEven
 
 	familyID := ""
 	if order := proxy.OrderId(); order != nil {
-		familyID = order.Record.GetString("family_id")
+		familyID = order.GetString("family_id")
 	}
 
 	payloadHash := firstNonEmpty(record.GetString("payload_hash"), responseEnvelope.PayloadHash)

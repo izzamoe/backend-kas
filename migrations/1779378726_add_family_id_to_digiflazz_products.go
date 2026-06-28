@@ -5,8 +5,6 @@ import (
 	m "github.com/pocketbase/pocketbase/migrations"
 )
 
-func stringPtr(s string) *string { return &s }
-
 func init() {
 	m.Register(func(app core.App) error {
 		if _, err := app.DB().NewQuery(`DELETE FROM digiflazz_products`).Execute(); err != nil {
@@ -50,8 +48,8 @@ func init() {
 			return err
 		}
 
-		collection.ListRule = stringPtr(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id`)
-		collection.ViewRule = stringPtr(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id`)
+		collection.ListRule = new(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id`)
+		collection.ViewRule = new(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id`)
 		collection.CreateRule = nil
 		collection.UpdateRule = nil
 		collection.DeleteRule = nil
@@ -97,9 +95,9 @@ func init() {
 		}
 		collection.Fields.RemoveById("relation4011010003")
 		collection.Fields.RemoveById("relation4011010002")
-		collection.ListRule = stringPtr(`@request.auth.id != ''`)
-		collection.ViewRule = stringPtr(`@request.auth.id != ''`)
-		collection.CreateRule = stringPtr(`@request.auth.id != ''`)
+		collection.ListRule = new(`@request.auth.id != ''`)
+		collection.ViewRule = new(`@request.auth.id != ''`)
+		collection.CreateRule = new(`@request.auth.id != ''`)
 		collection.UpdateRule = nil
 		collection.DeleteRule = nil
 		if err := app.Save(collection); err != nil {
@@ -117,11 +115,11 @@ func init() {
 		if err != nil {
 			return err
 		}
-		cred.ListRule = stringPtr(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id && @collection.family_members.role ?= "owner"`)
-		cred.ViewRule = stringPtr(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id && @collection.family_members.role ?= "owner"`)
-		cred.CreateRule = stringPtr(`@request.auth.id != ''`)
-		cred.UpdateRule = stringPtr(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id && @collection.family_members.role ?= "owner"`)
-		cred.DeleteRule = stringPtr(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id && @collection.family_members.role ?= "owner"`)
+		cred.ListRule = new(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id && @collection.family_members.role ?= "owner"`)
+		cred.ViewRule = new(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id && @collection.family_members.role ?= "owner"`)
+		cred.CreateRule = new(`@request.auth.id != ''`)
+		cred.UpdateRule = new(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id && @collection.family_members.role ?= "owner"`)
+		cred.DeleteRule = new(`@collection.family_members.user_id ?= @request.auth.id && @collection.family_members.family_id ?= family_id && @collection.family_members.role ?= "owner"`)
 		return app.Save(cred)
 
 	})

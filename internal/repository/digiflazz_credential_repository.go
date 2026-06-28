@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"kas/generated"
-	digiflazzdomain "kas/internal/domain/digiflazz"
 	"time"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/generated"
+	digiflazzdomain "kas/internal/domain/digiflazz"
 )
 
 const digiflazzCredentialsCollection = "digiflazz_credentials"
@@ -95,12 +96,12 @@ func (r *digiflazzCredentialRepo) Create(data *DigiflazzCredentialCreateData) (*
 		return nil, err
 	}
 
-	proxy.Record.Set("family_id", data.FamilyID)
+	proxy.Set("family_id", data.FamilyID)
 	proxy.SetUsername(data.Username)
 	proxy.SetApiKey(encodeDigiflazzCredentialSecret(data.APIKeyCiphertext, data.APIKeyLast4, data.APIKeyHash, data.WebhookTokenHash))
 	proxy.SetWebhookId(data.WebhookID)
-	proxy.Record.Set("webhook_token_hash", data.WebhookTokenHash)
-	proxy.Record.Set("webhook_secret", data.WebhookSecret)
+	proxy.Set("webhook_token_hash", data.WebhookTokenHash)
+	proxy.Set("webhook_secret", data.WebhookSecret)
 	proxy.SetTesting(data.Testing)
 	proxy.SetIsActive(data.IsActive)
 
@@ -224,7 +225,7 @@ func (r *digiflazzCredentialRepo) CountByFamilyID(familyID string) (int, error) 
 	return count, err
 }
 
-func (r *digiflazzCredentialRepo) Update(id string, data *DigiflazzCredentialUpdateData) (*digiflazzdomain.CredentialDTO, error) {
+func (r *digiflazzCredentialRepo) Update(id string, data *DigiflazzCredentialUpdateData) (*digiflazzdomain.CredentialDTO, error) { //nolint:gocyclo // Credential update has many optional fields
 	record, err := r.app.FindRecordById(digiflazzCredentialsCollection, id)
 	if err != nil {
 		return nil, err
@@ -249,13 +250,13 @@ func (r *digiflazzCredentialRepo) Update(id string, data *DigiflazzCredentialUpd
 	}
 	if data.WebhookTokenHash != nil {
 		current.WebhookTokenHash = *data.WebhookTokenHash
-		proxy.Record.Set("webhook_token_hash", *data.WebhookTokenHash)
+		proxy.Set("webhook_token_hash", *data.WebhookTokenHash)
 	}
 	if data.WebhookID != nil {
 		proxy.SetWebhookId(*data.WebhookID)
 	}
 	if data.WebhookSecret != nil {
-		proxy.Record.Set("webhook_secret", *data.WebhookSecret)
+		proxy.Set("webhook_secret", *data.WebhookSecret)
 	}
 	if data.APIKeyCiphertext != nil || data.APIKeyLast4 != nil || data.APIKeyHash != nil || data.WebhookTokenHash != nil {
 		proxy.SetApiKey(mustEncodeDigiflazzCredentialSecret(current))

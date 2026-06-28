@@ -2,10 +2,11 @@ package repository
 
 import (
 	"fmt"
-	"kas/generated"
-	"kas/internal/domain"
 
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/generated"
+	"kas/internal/domain"
 )
 
 // defaultExpandFields is shared across all methods to avoid repeated allocation
@@ -57,7 +58,7 @@ type TransactionRepository interface {
 	GetDashboardData(familyID string, year, month int) (totalBalance, monthlyIncome, monthlyExpense, prevIncome, prevExpense float64, err error)
 }
 
-// transactionRepo adalah implementasi concrete
+// transactionRepo adalah implements concrete
 type transactionRepo struct {
 	app core.App
 }
@@ -303,7 +304,7 @@ func (r *transactionRepo) GetMonthlyStats(familyID string, year, month int) (inc
 	return income, expense, err
 }
 
-func (r *transactionRepo) GetMonthlyReportData(familyID string, year, month int) (*MonthlyReportData, error) {
+func (r *transactionRepo) GetMonthlyReportData(familyID string, year, month int) (*MonthlyReportData, error) { //nolint:funlen // SQL query construction requires many fields
 	startDate, endDate := dateRange(year, month)
 
 	var totalIncome, totalExpense float64

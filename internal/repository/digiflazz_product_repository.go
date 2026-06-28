@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"kas/generated"
-	digiflazzdomain "kas/internal/domain/digiflazz"
-
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/generated"
+	digiflazzdomain "kas/internal/domain/digiflazz"
 )
 
 type UpsertProductInput struct {
@@ -49,7 +49,7 @@ func NewDigiflazzProductRepository(app core.App) DigiflazzProductRepository {
 
 func (r *digiflazzProductRepo) Upsert(input *UpsertProductInput) (*digiflazzdomain.ProductDTO, error) {
 	if input.FamilyID == "" {
-		return nil, fmt.Errorf("digiflazz_product_repo: familyID is required")
+		return nil, errors.New("digiflazz_product_repo: familyID is required")
 	}
 
 	var record *core.Record
@@ -104,7 +104,7 @@ func (r *digiflazzProductRepo) Upsert(input *UpsertProductInput) (*digiflazzdoma
 
 func (r *digiflazzProductRepo) Search(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error) {
 	if familyID == "" {
-		return nil, fmt.Errorf("digiflazz_product_repo: familyID is required for Search")
+		return nil, errors.New("digiflazz_product_repo: familyID is required for Search")
 	}
 
 	if req == nil {
@@ -171,7 +171,7 @@ func (r *digiflazzProductRepo) Search(familyID string, req *digiflazzdomain.Prod
 
 func (r *digiflazzProductRepo) GetBySKU(familyID, sku string) (*digiflazzdomain.ProductDTO, error) {
 	if familyID == "" {
-		return nil, fmt.Errorf("digiflazz_product_repo: familyID is required for GetBySKU")
+		return nil, errors.New("digiflazz_product_repo: familyID is required for GetBySKU")
 	}
 
 	record, err := r.app.FindFirstRecordByFilter(
@@ -193,7 +193,7 @@ func (r *digiflazzProductRepo) GetBySKU(familyID, sku string) (*digiflazzdomain.
 
 func (r *digiflazzProductRepo) DeleteByFamilyID(familyID string) error {
 	if familyID == "" {
-		return fmt.Errorf("digiflazz_product_repo: familyID is required for DeleteByFamilyID")
+		return errors.New("digiflazz_product_repo: familyID is required for DeleteByFamilyID")
 	}
 	records, err := r.app.FindRecordsByFilter(
 		"digiflazz_products",

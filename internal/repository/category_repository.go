@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"kas/generated"
-	"kas/internal/domain"
 
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/generated"
+	"kas/internal/domain"
 )
 
 // CategoryInfo holds the essential fields of a category record for validation purposes.
@@ -51,7 +52,7 @@ func (r *categoryRepo) GetByID(id string) (*CategoryInfo, error) {
 
 	return &CategoryInfo{
 		ID:        proxy.Id,
-		FamilyID:  proxy.Record.GetString("family_id"),
+		FamilyID:  proxy.GetString("family_id"),
 		Name:      proxy.Name(),
 		IsDefault: proxy.IsDefault(),
 	}, nil
@@ -77,7 +78,7 @@ func (r *categoryRepo) FindByFamilyNameAndType(familyID, name, txType string) (*
 
 	return &CategoryInfo{
 		ID:        proxy.Id,
-		FamilyID:  proxy.Record.GetString("family_id"),
+		FamilyID:  proxy.GetString("family_id"),
 		Name:      proxy.Name(),
 		IsDefault: proxy.IsDefault(),
 	}, nil
@@ -98,7 +99,7 @@ func (r *categoryRepo) SeedMasterCategories(app core.App, familyID string) error
 			return fmt.Errorf("failed to find master categories: %w", err)
 		}
 		if len(masterRecords) == 0 {
-			return fmt.Errorf("no master categories found in database")
+			return errors.New("no master categories found in database")
 		}
 
 		for _, master := range masterRecords {
@@ -112,11 +113,11 @@ func (r *categoryRepo) SeedMasterCategories(app core.App, familyID string) error
 				return fmt.Errorf("failed to create category proxy: %w", err)
 			}
 
-			newProxy.Record.Set("family_id", familyID)
+			newProxy.Set("family_id", familyID)
 			newProxy.SetName(masterProxy.Name())
 			newProxy.SetIcon(masterProxy.Icon())
 			newProxy.SetColor(masterProxy.Color())
-			newProxy.Record.Set("type", masterProxy.GetString("type"))
+			newProxy.Set("type", masterProxy.GetString("type"))
 			newProxy.SetIsDefault(true)
 			newProxy.SetIsMaster(false)
 			if err := txApp.Save(newProxy.Record); err != nil {

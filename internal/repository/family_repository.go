@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"kas/generated"
-	"kas/internal/domain"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/generated"
+	"kas/internal/domain"
 )
 
 // FamilyRepository defines the data access contract for family records.

@@ -4,11 +4,11 @@ import (
 	"errors"
 	"testing"
 
-	"kas/internal/domain"
-	_ "kas/migrations"
-
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+
+	"kas/internal/domain"
+	_ "kas/migrations"
 )
 
 func setupRepositoryTestApp(t *testing.T) *tests.TestApp {

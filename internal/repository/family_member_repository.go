@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"kas/generated"
-	"kas/internal/domain"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/generated"
+	"kas/internal/domain"
 )
 
 // FamilyMemberRepository defines the data access contract for family membership records.
@@ -59,8 +60,8 @@ func (r *familyMemberRepo) recordToDTO(record *core.Record) (*domain.FamilyMembe
 
 	return &domain.FamilyMemberDTO{
 		ID:        proxy.Id,
-		UserID:    proxy.Record.GetString("user_id"),
-		FamilyID:  proxy.Record.GetString("family_id"),
+		UserID:    proxy.GetString("user_id"),
+		FamilyID:  proxy.GetString("family_id"),
 		Role:      proxy.GetString("role"),
 		CreatedAt: proxy.Created().Time(),
 		UpdatedAt: proxy.Updated().Time(),
@@ -86,9 +87,9 @@ func (r *familyMemberRepo) CreateMember(app core.App, familyID string, userID st
 	if err != nil {
 		return fmt.Errorf("failed to create family member record: %w", err)
 	}
-	proxy.Record.Set("family_id", familyID)
-	proxy.Record.Set("user_id", userID)
-	proxy.Record.Set("role", role)
+	proxy.Set("family_id", familyID)
+	proxy.Set("user_id", userID)
+	proxy.Set("role", role)
 	return app.Save(proxy.Record)
 }
 
@@ -101,12 +102,12 @@ func (r *familyMemberRepo) DeleteMember(userID string) error {
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("not a member of any family")
+			return errors.New("not a member of any family")
 		}
 		return fmt.Errorf("failed to find family member: %w", err)
 	}
 	if record == nil {
-		return fmt.Errorf("not a member of any family")
+		return errors.New("not a member of any family")
 	}
 	return r.app.Delete(record)
 }

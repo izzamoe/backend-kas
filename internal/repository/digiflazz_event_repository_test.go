@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	digiflazzdomain "kas/internal/domain/digiflazz"
-
 	"github.com/pocketbase/pocketbase/core"
+
+	digiflazzdomain "kas/internal/domain/digiflazz"
 )
 
 func TestDigiflazzEventRepositoryCreateAndDeduplicate(t *testing.T) {

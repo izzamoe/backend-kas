@@ -2,11 +2,12 @@ package repository
 
 import (
 	"errors"
-	digiflazzdomain "kas/internal/domain/digiflazz"
-	_ "kas/migrations"
 	"testing"
 
 	"github.com/pocketbase/pocketbase/core"
+
+	digiflazzdomain "kas/internal/domain/digiflazz"
+	_ "kas/migrations"
 )
 
 func TestDigiflazzOrderRepositoryCreateGetListAndUpdate(t *testing.T) {

@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	digiflazzdomain "kas/internal/domain/digiflazz"
+	"github.com/pocketbase/pocketbase/core"
 
 	"kas/generated"
-
-	"github.com/pocketbase/pocketbase/core"
+	digiflazzdomain "kas/internal/domain/digiflazz"
 )
 
 type CreateDigiflazzOrderParams struct {
@@ -77,8 +76,8 @@ func (r *digiflazzOrderRepo) Create(params CreateDigiflazzOrderParams) (*digifla
 		return nil, fmt.Errorf("failed to create digiflazz order proxy: %w", err)
 	}
 
-	proxy.Record.Set("family_id", params.FamilyID)
-	proxy.Record.Set("created_by", params.UserID)
+	proxy.Set("family_id", params.FamilyID)
+	proxy.Set("created_by", params.UserID)
 	proxy.SetRefId(params.RefID)
 	proxy.SetBuyerSkuCode(params.ProductCode)
 	proxy.SetCustomerNo(params.CustomerNo)
@@ -92,7 +91,7 @@ func (r *digiflazzOrderRepo) Create(params CreateDigiflazzOrderParams) (*digifla
 	if err := validateDigiflazzOrderStatus(params.Status); err != nil {
 		return nil, err
 	}
-	proxy.Record.Set("status", params.Status.String())
+	proxy.Set("status", params.Status.String())
 	proxy.SetMessage(params.Message)
 	proxy.SetRc(params.RC)
 	proxy.SetSn(params.SN)
@@ -183,7 +182,7 @@ func (r *digiflazzOrderRepo) UpdateStatus(familyID, id string, params UpdateDigi
 	if err := validateDigiflazzOrderStatus(params.Status); err != nil {
 		return nil, err
 	}
-	proxy.Record.Set("status", params.Status.String())
+	proxy.Set("status", params.Status.String())
 	if params.Message != "" {
 		proxy.SetMessage(params.Message)
 	}
@@ -307,7 +306,7 @@ func marshalDigiflazzOrderSnapshot(params CreateDigiflazzOrderParams) (string, e
 	return string(data), nil
 }
 
-func (r *digiflazzOrderRepo) recordToDTO(record *core.Record) (*digiflazzdomain.OrderDTO, error) {
+func (r *digiflazzOrderRepo) recordToDTO(record *core.Record) (*digiflazzdomain.OrderDTO, error) { //nolint:gocognit,gocyclo,funlen // Record mapping handles many optional expanded relations
 	proxy, err := generated.WrapRecord[generated.DigiflazzOrders](record)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wrap digiflazz order record: %w", err)
@@ -322,8 +321,8 @@ func (r *digiflazzOrderRepo) recordToDTO(record *core.Record) (*digiflazzdomain.
 	updatedAt := proxy.Updated().Time()
 	dto := &digiflazzdomain.OrderDTO{
 		ID:              proxy.Id,
-		FamilyID:        proxy.Record.GetString("family_id"),
-		CreatedBy:       proxy.Record.GetString("created_by"),
+		FamilyID:        proxy.GetString("family_id"),
+		CreatedBy:       proxy.GetString("created_by"),
 		ProductCode:     proxy.BuyerSkuCode(),
 		ProductName:     proxy.ProductName(),
 		ProductCategory: proxy.Category(),
@@ -347,7 +346,7 @@ func (r *digiflazzOrderRepo) recordToDTO(record *core.Record) (*digiflazzdomain.
 	}
 
 	var response digiflazzdomain.OrderResponseDTO
-	if raw := proxy.Response(); raw != "" {
+	if raw := proxy.Response(); raw != "" { //nolint:nestif // JSON unmarshaling requires nested error handling
 		if err := json.Unmarshal([]byte(raw), &response); err == nil {
 			if dto.Message == "" {
 				dto.Message = response.Message
@@ -376,7 +375,7 @@ func (r *digiflazzOrderRepo) recordToDTO(record *core.Record) (*digiflazzdomain.
 	}
 
 	var payload digiflazzOrderSnapshotPayload
-	if raw := proxy.Payload(); raw != "" {
+	if raw := proxy.Payload(); raw != "" { //nolint:nestif // JSON unmarshaling requires nested error handling
 		if err := json.Unmarshal([]byte(raw), &payload); err == nil {
 			dto.CredentialID = payload.CredentialID
 			dto.EventType = payload.EventType
