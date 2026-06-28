@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	digiflazzclient "kas/internal/digiflazz"
-	digiflazzdomain "kas/internal/domain/digiflazz"
-	"kas/internal/repository"
 	"math"
 	"strings"
 	"time"
+
+	digiflazzclient "kas/internal/digiflazz"
+	digiflazzdomain "kas/internal/domain/digiflazz"
+	"kas/internal/repository"
 )
 
-func (s *digiflazzOrderService) executePostpaidInquiry(ctx context.Context, client digiflazzclient.DigiflazzClient, familyID, createdBy, credentialID, refID string, req digiflazzdomain.CreateOrderRequest, product *digiflazzdomain.ProductDTO) (*digiflazzdomain.OrderDTO, error) {
+func (s *digiflazzOrderService) executePostpaidInquiry(ctx context.Context, client digiflazzclient.DigiflazzClient, familyID, createdBy, credentialID, refID string, req digiflazzdomain.CreateOrderRequest, product *digiflazzdomain.ProductDTO) (*digiflazzdomain.OrderDTO, error) { //nolint:funlen // Postpaid inquiry requires multiple validation and persistence steps
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -34,6 +35,12 @@ func (s *digiflazzOrderService) executePostpaidInquiry(ctx context.Context, clie
 	}
 	if req.Year != nil {
 		inqReq.Year = *req.Year
+	}
+	// E-Money inq-pasca requires the chosen denomination in the `amount` field
+	// (e.g. buyer_sku_code "emoney" with amount 22500); without it Digiflazz cannot
+	// resolve the nominal. pay-pasca later references this inquiry, so it needs no amount.
+	if req.Amount != nil {
+		inqReq.Amount = float64(*req.Amount)
 	}
 	if idPelanggan2 := strings.TrimSpace(req.IDPelanggan2); idPelanggan2 != "" {
 		inqReq.IdPelanggan2 = idPelanggan2
@@ -98,7 +105,7 @@ func (s *digiflazzOrderService) executePostpaidInquiry(ctx context.Context, clie
 	return order, nil
 }
 
-func (s *digiflazzOrderService) PayPostpaidOrder(ctx context.Context, familyID, userID, orderID string) (*digiflazzdomain.OrderDTO, error) {
+func (s *digiflazzOrderService) PayPostpaidOrder(ctx context.Context, familyID, userID, orderID string) (*digiflazzdomain.OrderDTO, error) { //nolint:gocyclo // Postpaid payment flow has many validation branches
 	if ctx == nil {
 		ctx = context.Background()
 	}
