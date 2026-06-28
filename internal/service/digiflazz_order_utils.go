@@ -5,14 +5,15 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	digiflazzclient "kas/internal/digiflazz"
-	digiflazzdomain "kas/internal/domain/digiflazz"
-	"kas/internal/utils"
 	"math/big"
 	"net"
 	"os"
 	"strings"
 	"time"
+
+	digiflazzclient "kas/internal/digiflazz"
+	digiflazzdomain "kas/internal/domain/digiflazz"
+	"kas/internal/utils"
 )
 
 const digiflazzRefIDRandomLength = 6
@@ -111,15 +112,29 @@ func decryptDigiflazzCredentialAPIKey(ciphertext string) (string, error) {
 
 func classifyDigiflazzTopupResponse(resp *digiflazzclient.TransactionResponse, err error) (*digiflazzdomain.OrderResponseDTO, digiflazzdomain.OrderStatus) {
 	if err != nil {
-		status := digiflazzdomain.OrderStatusProcessing
+		// For a Digiflazz API error, classify by response code so this path stays
+		// consistent with classifyDigiflazzRCAndStatus: indeterminate codes (timeout
+		// rc 01, pending rc 03/99) stay processing and are reconciled later by the
+		// status-check cron / webhook, while definitive rejections (invalid sign, SKU
+		// inactive, insufficient balance, duplicate ref_id, ...) become failed instead
+		// of being polled forever. A timeout must NOT be marked failed: the transaction
+		// may still complete at the biller.
+		if apiErr, ok := errors.AsType[*digiflazzdomain.DigiflazzAPIError](err); ok {
+			status := classifyDigiflazzRCAndStatus(apiErr.RC, "")
+			message := apiErr.Message
+			if message == "" {
+				message = err.Error()
+			}
+			return &digiflazzdomain.OrderResponseDTO{Message: message, RC: apiErr.RC, Status: status}, status
+		}
+		// Transport/parse error (timeout, connection reset, ...): the transaction state
+		// at the biller is unknown, so keep it processing rather than risk recording a
+		// successful topup as failed.
 		message := "digiflazz topup is processing"
-		if errors.Is(err, digiflazzdomain.ErrDigiflazzTimeout) {
-			status = digiflazzdomain.OrderStatusFailed
-			message = err.Error()
-		} else if !isTimeoutLike(err) {
+		if !isTimeoutLike(err) {
 			message = err.Error()
 		}
-		return &digiflazzdomain.OrderResponseDTO{Message: message, Status: status}, status
+		return &digiflazzdomain.OrderResponseDTO{Message: message, Status: digiflazzdomain.OrderStatusProcessing}, digiflazzdomain.OrderStatusProcessing
 	}
 	if resp == nil {
 		status := digiflazzdomain.OrderStatusProcessing
@@ -145,9 +160,12 @@ func classifyDigiflazzRCAndStatus(rc, status string) digiflazzdomain.OrderStatus
 		return digiflazzdomain.OrderStatusSuccess
 	case "03", "99":
 		return digiflazzdomain.OrderStatusProcessing
-	case "", "01", "10":
+	// Timeouts leave the transaction in an indeterminate state at the biller and may
+	// still complete: rc 01 (timeout) and rc 70 ("Timeout Dari Biller", which forms a
+	// transaction) must stay processing and be reconciled later, never failed.
+	case "", "01", "10", "70":
 		return digiflazzdomain.OrderStatusProcessing
-	case "02", "04", "06", "07", "09", "40", "41", "42", "43", "44", "45", "47", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "80", "81", "82", "83", "84", "85", "86", "87", "88":
+	case "02", "04", "06", "07", "09", "40", "41", "42", "43", "44", "45", "47", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "71", "72", "73", "74", "80", "81", "82", "83", "84", "85", "86", "87", "88":
 		return digiflazzdomain.OrderStatusFailed
 	default:
 		return digiflazzdomain.OrderStatusProcessing

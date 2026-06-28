@@ -8,7 +8,7 @@ const (
 	OrderStatusProcessing OrderStatus = "processing"
 	OrderStatusSuccess    OrderStatus = "success"
 	OrderStatusFailed     OrderStatus = "failed"
-	OrderStatusCancelled  OrderStatus = "cancelled"
+	OrderStatusCancelled  OrderStatus = "canceled"
 )
 
 func (s OrderStatus) String() string { return string(s) }

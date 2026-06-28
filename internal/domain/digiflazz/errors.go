@@ -11,7 +11,7 @@ var (
 	ErrDigiflazzOrderProcessing       = errors.New("digiflazz order is still processing")
 	ErrDigiflazzOrderSuccess          = errors.New("digiflazz order completed successfully")
 	ErrDigiflazzOrderFailed           = errors.New("digiflazz order failed")
-	ErrDigiflazzOrderCancelled        = errors.New("digiflazz order was cancelled")
+	ErrDigiflazzOrderCancelled        = errors.New("digiflazz order was canceled")
 	ErrDigiflazzTimeout               = errors.New("transaksi timeout")
 	ErrDigiflazzTransactionFailed     = errors.New("transaksi gagal")
 	ErrDigiflazzTransactionPending    = errors.New("transaksi pending")
@@ -26,6 +26,7 @@ var (
 	ErrDigiflazzTransactionNotFound   = errors.New("transaksi tidak ditemukan")
 	ErrDigiflazzRateLimit             = errors.New("limitasi pengecekan pricelist")
 	ErrDigiflazzAccountBlocked        = errors.New("akun diblokir")
+	ErrDigiflazzAccountNotVerified    = errors.New("akun belum diverifikasi")
 	ErrDigiflazzCutoff                = errors.New("sedang cut off")
 	ErrDigiflazzUnknownError          = errors.New("error tidak diketahui")
 	ErrDigiflazzUnknownResponseCode   = ErrDigiflazzUnknownError
@@ -53,7 +54,7 @@ func (e *DigiflazzAPIError) Error() string {
 
 func (e *DigiflazzAPIError) Unwrap() error { return e.Err }
 
-func MapDigiflazzRC(rc, message string) error {
+func MapDigiflazzRC(rc, message string) error { //nolint:gocyclo // RC code mapping requires exhaustive switch
 	msg := strings.TrimSpace(message)
 	switch strings.TrimSpace(rc) {
 	case "00":
@@ -76,16 +77,30 @@ func MapDigiflazzRC(rc, message string) error {
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzInsufficientBalance}
 	case "45":
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzIPNotAllowed}
+	case "47":
+		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzTransactionRejected}
 	case "49":
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzRefIDNotUnique}
 	case "50":
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzTransactionNotFound}
+	case "51", "52", "54":
+		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzInvalidCustomerNumber}
+	case "53", "55":
+		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzProductUnavailable}
 	case "58", "66":
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzCutoff}
-	case "80", "81", "82":
+	case "70":
+		// "Timeout Dari Biller": the transaction is formed but its outcome is unknown,
+		// so it is treated like rc 01 (indeterminate, reconciled later), never failed.
+		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzTimeout}
+	case "80", "81", "88":
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzAccountBlocked}
+	case "82":
+		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzAccountNotVerified}
 	case "83", "85", "86":
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzRateLimit}
+	case "84", "87":
+		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrAmountRequired}
 	default:
 		return &DigiflazzAPIError{RC: rc, Message: msg, Err: ErrDigiflazzUnknownError}
 	}

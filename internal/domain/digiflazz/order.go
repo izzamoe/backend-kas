@@ -21,7 +21,7 @@ type OrderDTO struct {
 	CustomerNo      string      `json:"customer_no"`
 	CustomerName    string      `json:"customer_name,omitempty"`
 	RefID           string      `json:"ref_id"`
-	Status          OrderStatus `json:"status" enums:"inquiry,pending,processing,success,failed,cancelled"`
+	Status          OrderStatus `json:"status" enums:"inquiry,pending,processing,success,failed,canceled"`
 	Message         string      `json:"message,omitempty"`
 	RC              string      `json:"rc,omitempty"`
 	SN              string      `json:"sn,omitempty"`
