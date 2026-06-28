@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
+
 	"kas/internal/handler"
 	"kas/internal/middleware"
 	"kas/internal/repository"
 	"kas/internal/service"
 	_ "kas/migrations"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 func newTransactionTestApp(t testing.TB) *tests.TestApp {
@@ -205,9 +205,7 @@ func TestTransactionHandler(t *testing.T) {
 			URL:             "/api/transactions",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindTransactionRoutes(app, e)
 			},
@@ -319,9 +317,7 @@ func TestTransactionHandler(t *testing.T) {
 			URL:             "/api/transactions/nonexistentid",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindTransactionRoutes(app, e)
 			},
@@ -415,9 +411,7 @@ func TestTransactionHandler(t *testing.T) {
 			URL:             "/api/families/somefamilyid/transactions",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindTransactionRoutes(app, e)
 			},
@@ -486,9 +480,7 @@ func TestTransactionHandler(t *testing.T) {
 			URL:             "/api/transactions?start=2026-05-01&end=2026-05-31",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindTransactionRoutes(app, e)
 			},
@@ -595,9 +587,7 @@ func TestTransactionHandler(t *testing.T) {
 			URL:             "/api/transactions/someid",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindTransactionRoutes(app, e)
 			},
@@ -707,9 +697,7 @@ func TestTransactionHandler(t *testing.T) {
 			URL:             "/api/transactions/someid",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindTransactionRoutes(app, e)
 			},
@@ -788,9 +776,7 @@ func TestTransactionHandler(t *testing.T) {
 			URL:             "/api/families/somefamilyid/balance",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindTransactionRoutes(app, e)
 			},

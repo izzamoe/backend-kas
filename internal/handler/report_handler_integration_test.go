@@ -7,6 +7,7 @@ import (
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+
 	"kas/internal/domain"
 	"kas/internal/handler"
 	"kas/internal/middleware"
@@ -83,9 +84,7 @@ func TestReportHandler(t *testing.T) {
 			URL:             "/api/reports/monthly?year=2026&month=1",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindReportRoutes(app, e)
 			},
@@ -244,9 +243,7 @@ func TestReportHandler(t *testing.T) {
 			URL:             "/api/reports/summary",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindReportRoutes(app, e)
 			},

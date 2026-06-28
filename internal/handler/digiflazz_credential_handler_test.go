@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
 
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
@@ -15,9 +19,6 @@ import (
 	"kas/internal/middleware"
 	"kas/internal/repository"
 	_ "kas/migrations"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 type fakeCredentialService struct {
@@ -34,49 +35,49 @@ func (f *fakeCredentialService) GetCredential(ctx context.Context, familyID, use
 	if f.getCredential != nil {
 		return f.getCredential(ctx, familyID, userID)
 	}
-	return nil, fmt.Errorf("digiflazz credential not found")
+	return nil, errors.New("digiflazz credential not found")
 }
 
 func (f *fakeCredentialService) UpsertCredential(ctx context.Context, familyID, userID string, req digiflazzdomain.UpsertCredentialRequest) (*digiflazzdomain.UpsertCredentialResult, error) {
 	if f.upsertCredential != nil {
 		return f.upsertCredential(ctx, familyID, userID, req)
 	}
-	return nil, fmt.Errorf("upsert failed")
+	return nil, errors.New("upsert failed")
 }
 
 func (f *fakeCredentialService) DeleteCredential(ctx context.Context, familyID, userID string) error {
 	if f.deleteCredential != nil {
 		return f.deleteCredential(ctx, familyID, userID)
 	}
-	return fmt.Errorf("delete failed")
+	return errors.New("delete failed")
 }
 
 func (f *fakeCredentialService) RotateWebhookToken(ctx context.Context, familyID, userID string) (*digiflazzdomain.RotateWebhookTokenResponse, error) {
 	if f.rotateWebhookToken != nil {
 		return f.rotateWebhookToken(ctx, familyID, userID)
 	}
-	return nil, fmt.Errorf("rotate failed")
+	return nil, errors.New("rotate failed")
 }
 
 func (f *fakeCredentialService) TestWebhook(ctx context.Context, familyID, userID string) (*digiflazzdomain.WebhookTestResponse, error) {
 	if f.testWebhook != nil {
 		return f.testWebhook(ctx, familyID, userID)
 	}
-	return nil, fmt.Errorf("test webhook failed")
+	return nil, errors.New("test webhook failed")
 }
 
 func (f *fakeCredentialService) CheckBalance(ctx context.Context, familyID, userID string) (*digiflazzdomain.BalanceResponse, error) {
 	if f.checkBalance != nil {
 		return f.checkBalance(ctx, familyID, userID)
 	}
-	return nil, fmt.Errorf("check balance failed")
+	return nil, errors.New("check balance failed")
 }
 
 func (f *fakeCredentialService) Deposit(ctx context.Context, familyID, userID string, amount float64, bank string) (*digiflazzclient.DepositResponse, error) {
 	if f.deposit != nil {
 		return f.deposit(ctx, familyID, userID, amount, bank)
 	}
-	return nil, fmt.Errorf("deposit failed")
+	return nil, errors.New("deposit failed")
 }
 
 func seedDigiflazzCredentialTestData(t *testing.T, app *tests.TestApp) (userToken, familyID, userID string) {
@@ -192,7 +193,7 @@ func TestDigiflazzCredentialHandler_Get(t *testing.T) {
 	svc := &fakeCredentialService{
 		getCredential: func(ctx context.Context, fID, uID string) (*digiflazzdomain.CredentialDTO, error) {
 			if fID != familyID || uID != userID {
-				return nil, fmt.Errorf("unauthorized: only family owner can manage digiflazz credentials")
+				return nil, errors.New("unauthorized: only family owner can manage digiflazz credentials")
 			}
 			return fakeDTO, nil
 		},
@@ -208,8 +209,8 @@ func TestDigiflazzCredentialHandler_Get(t *testing.T) {
 			},
 			ExpectedStatus:  http.StatusOK,
 			ExpectedContent: []string{`"id"`, `"family_id"`, `"username"`},
-			TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
-			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			TestAppFactory:  func(tb testing.TB) *tests.TestApp { return app },
+			BeforeTestFunc: func(tb testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
 				bindDigiflazzCredentialRoutes(svrApp, e, svc)
 			},
 		},
@@ -239,8 +240,8 @@ func TestDigiflazzCredentialHandler_Delete(t *testing.T) {
 				"Authorization": "Bearer " + token,
 			},
 			ExpectedStatus: http.StatusNoContent,
-			TestAppFactory: func(t testing.TB) *tests.TestApp { return app },
-			BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
+			TestAppFactory: func(tb testing.TB) *tests.TestApp { return app },
+			BeforeTestFunc: func(tb testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
 				bindDigiflazzCredentialRoutes(svrApp, e, svc)
 			},
 		},
@@ -293,7 +294,7 @@ func TestDigiflazzCredentialHandler_TestWebhook(t *testing.T) {
 	svc := &fakeCredentialService{
 		testWebhook: func(ctx context.Context, fID, uID string) (*digiflazzdomain.WebhookTestResponse, error) {
 			if fID != familyID || uID != userID {
-				return nil, fmt.Errorf("unexpected auth context")
+				return nil, errors.New("unexpected auth context")
 			}
 			return &digiflazzdomain.WebhookTestResponse{
 				Sed:    "ping-sed",
@@ -439,7 +440,7 @@ func TestDigiflazzDepositHandlerForbiddenForMember(t *testing.T) {
 
 	svc := &fakeCredentialService{
 		deposit: func(ctx context.Context, fID, uID string, amount float64, bank string) (*digiflazzclient.DepositResponse, error) {
-			return nil, fmt.Errorf("unauthorized: only family owner can manage digiflazz credentials")
+			return nil, errors.New("unauthorized: only family owner can manage digiflazz credentials")
 		},
 	}
 
@@ -475,7 +476,7 @@ func TestDigiflazzCredentialHandler_UnauthorizedErrors(t *testing.T) {
 
 	svc := &fakeCredentialService{
 		getCredential: func(ctx context.Context, fID, uID string) (*digiflazzdomain.CredentialDTO, error) {
-			return nil, fmt.Errorf("unauthorized: only family owner can manage digiflazz credentials")
+			return nil, errors.New("unauthorized: only family owner can manage digiflazz credentials")
 		},
 	}
 

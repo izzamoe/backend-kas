@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // G505: SHA1 required by Digiflazz webhook signature
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/handler"
@@ -16,9 +20,6 @@ import (
 	"kas/internal/service"
 	"kas/internal/utils"
 	_ "kas/migrations"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 type fakeWebhookCredentialRepo struct {
@@ -64,36 +65,46 @@ type fakeWebhookOrderService struct {
 var _ service.DigiflazzOrderService = (*fakeWebhookOrderService)(nil)
 
 func (f *fakeWebhookOrderService) CreateOrder(_ context.Context, _, _ string, _ digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
+
 func (f *fakeWebhookOrderService) CreatePrepaidOrder(context.Context, *digiflazzdomain.CreateOrderRequest, string, string) (*digiflazzdomain.OrderDTO, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
+
 func (f *fakeWebhookOrderService) CreatePostpaidInquiry(context.Context, *digiflazzdomain.CreateOrderRequest, string, string) (*digiflazzdomain.OrderDTO, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
+
 func (f *fakeWebhookOrderService) PayPostpaidOrder(context.Context, string, string, string) (*digiflazzdomain.OrderDTO, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
+
 func (f *fakeWebhookOrderService) CheckPostpaidStatus(context.Context, string, string, string) (*digiflazzdomain.OrderDTO, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
+
 func (f *fakeWebhookOrderService) GetOrder(string, string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeWebhookOrderService) ListFamilyOrders(string, int, int) ([]*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeWebhookOrderService) UpdateStatus(familyID, id string, status digiflazzdomain.OrderStatus, response *digiflazzdomain.OrderResponseDTO) (*digiflazzdomain.OrderDTO, error) {
 	f.updates = append(f.updates, status)
 	return &digiflazzdomain.OrderDTO{ID: id, FamilyID: familyID, Status: status, CredentialID: "cred1", RefID: "REF-1"}, nil
 }
+
 func (f *fakeWebhookOrderService) FinalizeSuccessOrder(string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeWebhookOrderService) CheckAndUpdateStatus(context.Context, string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeWebhookOrderService) InquiryPLN(_ context.Context, _, _ string) (*digiflazzdomain.PLNInquiryResult, error) {
 	return nil, nil
 }
@@ -135,7 +146,8 @@ func TestDigiflazzWebhookHandler_ValidWebhookUpdatesOrderStatus(t *testing.T) {
 		ExpectedContent: []string{`"status":"received"`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: secret}},
 				&fakeWebhookOrderRepo{order: &digiflazzdomain.OrderDTO{ID: "order1", FamilyID: "fam1", CredentialID: "cred1", RefID: "REF-1", Status: digiflazzdomain.OrderStatusProcessing}},
 				eventRepo,
@@ -196,7 +208,8 @@ func TestDigiflazzWebhookHandler_MismatchedFamilyReturnsForbidden(t *testing.T) 
 		ExpectedContent: []string{`"status":403`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: secret}},
 				&fakeWebhookOrderRepo{order: &digiflazzdomain.OrderDTO{ID: "order1", FamilyID: "fam2", CredentialID: "cred1", RefID: "REF-1", Status: digiflazzdomain.OrderStatusProcessing}},
 				&fakeWebhookEventRepo{},
@@ -226,7 +239,8 @@ func TestDigiflazzWebhookHandler_DuplicateWebhookReturnsOKWithoutReprocessing(t 
 		ExpectedContent: []string{`"status":"received"`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: secret}},
 				&fakeWebhookOrderRepo{order: &digiflazzdomain.OrderDTO{ID: "order1", FamilyID: "fam1", CredentialID: "cred1", RefID: "REF-1", Status: digiflazzdomain.OrderStatusProcessing}},
 				eventRepo,
@@ -258,7 +272,8 @@ func TestDigiflazzWebhookHandler_InvalidSignatureReturnsUnauthorized(t *testing.
 		ExpectedContent: []string{`"status":401`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: "shared-secret"}},
 				&fakeWebhookOrderRepo{},
 				&fakeWebhookEventRepo{},
@@ -292,7 +307,8 @@ func TestDigiflazzWebhookHandler_XHubSignatureValid(t *testing.T) {
 		ExpectedContent: []string{`"status":"received"`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: secret}},
 				&fakeWebhookOrderRepo{},
 				&fakeWebhookEventRepo{},
@@ -320,7 +336,8 @@ func TestDigiflazzWebhookHandler_XDigiflazzSignatureFallback(t *testing.T) {
 		ExpectedContent: []string{`"status":"received"`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: secret}},
 				&fakeWebhookOrderRepo{},
 				&fakeWebhookEventRepo{},
@@ -349,7 +366,8 @@ func TestDigiflazzWebhookHandler_XHubTakesPriorityOverXDigiflazz(t *testing.T) {
 		ExpectedContent: []string{`"status":"received"`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: secret}},
 				&fakeWebhookOrderRepo{},
 				&fakeWebhookEventRepo{},
@@ -373,7 +391,8 @@ func TestDigiflazzWebhookHandler_BothSignaturesAbsentWithSecretReturnsUnauthoriz
 		ExpectedContent: []string{`"status":401`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: "shared-secret"}},
 				&fakeWebhookOrderRepo{},
 				&fakeWebhookEventRepo{},
@@ -400,7 +419,8 @@ func TestDigiflazzWebhookHandler_MalformedXHubSignatureReturnsUnauthorized(t *te
 		ExpectedContent: []string{`"status":401`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: "shared-secret"}},
 				&fakeWebhookOrderRepo{},
 				&fakeWebhookEventRepo{},
@@ -424,7 +444,8 @@ func TestDigiflazzWebhookHandler_EmptySecretSkipsValidation(t *testing.T) {
 		ExpectedContent: []string{`"status":"received"`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: ""}},
 				&fakeWebhookOrderRepo{},
 				&fakeWebhookEventRepo{},
@@ -451,7 +472,8 @@ func TestDigiflazzWebhookHandler_PingPayloadReturnsReceived(t *testing.T) {
 		ExpectedContent: []string{`"status":"received"`},
 		TestAppFactory:  func(t testing.TB) *tests.TestApp { return app },
 		BeforeTestFunc: func(t testing.TB, svrApp *tests.TestApp, e *core.ServeEvent) {
-			bindDigiflazzWebhookRoutes(e,
+			bindDigiflazzWebhookRoutes(
+				e,
 				&fakeWebhookCredentialRepo{credential: &repository.DigiflazzCredentialRecord{ID: "cred1", FamilyID: "fam1", WebhookTokenHash: utils.HashString(token), WebhookSecret: "shared-secret"}},
 				&fakeWebhookOrderRepo{},
 				&fakeWebhookEventRepo{},

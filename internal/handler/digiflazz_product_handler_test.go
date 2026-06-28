@@ -2,10 +2,14 @@ package handler_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
 
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/handler"
@@ -13,9 +17,6 @@ import (
 	"kas/internal/repository"
 	"kas/internal/service"
 	_ "kas/migrations"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 type fakeProductService struct {
@@ -36,7 +37,7 @@ func (f *fakeProductService) SyncPricelistWithCredential(ctx context.Context, cr
 	if f.syncPricelistWithCredential != nil {
 		return f.syncPricelistWithCredential(ctx, credential)
 	}
-	return nil, fmt.Errorf("not implemented in fake")
+	return nil, errors.New("not implemented in fake")
 }
 
 func (f *fakeProductService) SyncForFamily(ctx context.Context, familyID string) (*service.SyncResult, error) {

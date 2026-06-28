@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/hook"
+
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/middleware"
 	"kas/internal/service"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
 type DigiflazzOrderHandler struct {
@@ -189,7 +189,7 @@ func (h *DigiflazzOrderHandler) InquiryPLN(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, result)
 }
 
-func mapDigiflazzOrderError(e *core.RequestEvent, err error) error {
+func mapDigiflazzOrderError(e *core.RequestEvent, err error) error { //nolint:gocyclo // Error mapping requires exhaustive error type dispatch
 	if err == nil {
 		return nil
 	}

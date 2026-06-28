@@ -2,12 +2,13 @@ package handler
 
 import (
 	"errors"
-	"kas/internal/domain"
-	"kas/internal/service"
 	"net/http"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/hook"
+
+	"kas/internal/domain"
+	"kas/internal/service"
 )
 
 // FamilyHandler handles HTTP requests for family management endpoints.

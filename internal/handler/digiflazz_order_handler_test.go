@@ -10,15 +10,15 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
+
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/handler"
 	"kas/internal/middleware"
 	"kas/internal/repository"
 	"kas/internal/service"
 	_ "kas/migrations"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 type fakeOrderService struct {
@@ -38,58 +38,68 @@ func (f *fakeOrderService) CreateOrder(ctx context.Context, familyID, createdBy 
 	if f.createOrder != nil {
 		return f.createOrder(ctx, familyID, createdBy, req)
 	}
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
+
 func (f *fakeOrderService) CreatePrepaidOrder(ctx context.Context, req *digiflazzdomain.CreateOrderRequest, userID, familyID string) (*digiflazzdomain.OrderDTO, error) {
 	if f.createPrepaidOrder != nil {
 		return f.createPrepaidOrder(ctx, req, userID, familyID)
 	}
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
+
 func (f *fakeOrderService) CreatePostpaidInquiry(ctx context.Context, req *digiflazzdomain.CreateOrderRequest, userID, familyID string) (*digiflazzdomain.OrderDTO, error) {
 	if f.createPostpaidInquiry != nil {
 		return f.createPostpaidInquiry(ctx, req, userID, familyID)
 	}
-	return nil, fmt.Errorf("create inquiry failed")
+	return nil, errors.New("create inquiry failed")
 }
+
 func (f *fakeOrderService) PayPostpaidOrder(ctx context.Context, familyID, userID, orderID string) (*digiflazzdomain.OrderDTO, error) {
 	if f.payPostpaidOrder != nil {
 		return f.payPostpaidOrder(ctx, familyID, userID, orderID)
 	}
-	return nil, fmt.Errorf("pay failed")
+	return nil, errors.New("pay failed")
 }
+
 func (f *fakeOrderService) CheckPostpaidStatus(ctx context.Context, familyID, userID, orderID string) (*digiflazzdomain.OrderDTO, error) {
 	if f.checkPostpaidStatus != nil {
 		return f.checkPostpaidStatus(ctx, familyID, userID, orderID)
 	}
-	return nil, fmt.Errorf("status failed")
+	return nil, errors.New("status failed")
 }
+
 func (f *fakeOrderService) GetOrder(familyID, id string) (*digiflazzdomain.OrderDTO, error) {
 	if f.getOrder != nil {
 		return f.getOrder(familyID, id)
 	}
 	return nil, nil
 }
+
 func (f *fakeOrderService) ListFamilyOrders(familyID string, page, pageSize int) ([]*digiflazzdomain.OrderDTO, error) {
 	if f.listFamilyOrders != nil {
 		return f.listFamilyOrders(familyID, page, pageSize)
 	}
 	return nil, nil
 }
+
 func (f *fakeOrderService) UpdateStatus(string, string, digiflazzdomain.OrderStatus, *digiflazzdomain.OrderResponseDTO) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderService) FinalizeSuccessOrder(string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderService) CheckAndUpdateStatus(ctx context.Context, orderID string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderService) InquiryPLN(ctx context.Context, familyID, customerNo string) (*digiflazzdomain.PLNInquiryResult, error) {
 	if f.inquiryPLN != nil {
 		return f.inquiryPLN(ctx, familyID, customerNo)
 	}
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
 
 func bindDigiflazzOrderRoutes(app *tests.TestApp, e *core.ServeEvent, svc service.DigiflazzOrderService) {
@@ -115,7 +125,7 @@ func TestDigiflazzPrepaidOrderHandler_CreateAllowsFamilyMember(t *testing.T) {
 			capturedCreatedBy = createdBy
 			capturedReq = req
 			if fID != familyID {
-				return nil, fmt.Errorf("unexpected family context")
+				return nil, errors.New("unexpected family context")
 			}
 			return &digiflazzdomain.OrderDTO{
 				ID:          "order1",
@@ -213,7 +223,7 @@ func TestDigiflazzPascaOrderHandler_CreatePostpaidInquiry(t *testing.T) {
 			capturedCreatedBy = createdBy
 			capturedReq = req
 			if fID != familyID || createdBy != userID {
-				return nil, fmt.Errorf("unexpected identity")
+				return nil, errors.New("unexpected identity")
 			}
 			return &digiflazzdomain.OrderDTO{
 				ID:          "order1",
@@ -261,7 +271,7 @@ func TestDigiflazzPascaOrderHandler_PayAndCheckStatus(t *testing.T) {
 		svc := &fakeOrderService{
 			payPostpaidOrder: func(ctx context.Context, fID, uID, orderID string) (*digiflazzdomain.OrderDTO, error) {
 				if fID != familyID || uID != userID || orderID != "order1" {
-					return nil, fmt.Errorf("unexpected pay args")
+					return nil, errors.New("unexpected pay args")
 				}
 				return &digiflazzdomain.OrderDTO{ID: orderID, FamilyID: fID, Status: digiflazzdomain.OrderStatusSuccess}, nil
 			},
@@ -392,7 +402,7 @@ func TestDigiflazzPascaOrderHandler_AmountChangeMapsToBadRequest(t *testing.T) {
 	token, _, _, _ := seedDigiflazzProductTestData(t, app)
 	svc := &fakeOrderService{
 		payPostpaidOrder: func(ctx context.Context, familyID, userID, orderID string) (*digiflazzdomain.OrderDTO, error) {
-			return nil, fmt.Errorf("postpaid amount changed since inquiry; please create a fresh inquiry")
+			return nil, errors.New("postpaid amount changed since inquiry; please create a fresh inquiry")
 		},
 	}
 
@@ -637,7 +647,7 @@ func TestDigiflazzOrderHandler_InquiryPLN_Success(t *testing.T) {
 	svc := &fakeOrderService{
 		inquiryPLN: func(ctx context.Context, fID, customerNo string) (*digiflazzdomain.PLNInquiryResult, error) {
 			if fID != familyID || customerNo != "12345678901" {
-				return nil, fmt.Errorf("unexpected args")
+				return nil, errors.New("unexpected args")
 			}
 			return &digiflazzdomain.PLNInquiryResult{
 				CustomerNo:   "12345678901",
@@ -704,7 +714,7 @@ func TestDigiflazzOrderHandler_InquiryPLN_ServiceError(t *testing.T) {
 	ownerToken, _, _, _ := seedDigiflazzProductTestData(t, app)
 	svc := &fakeOrderService{
 		inquiryPLN: func(ctx context.Context, fID, customerNo string) (*digiflazzdomain.PLNInquiryResult, error) {
-			return nil, fmt.Errorf("pln inquiry failed: connection timeout")
+			return nil, errors.New("pln inquiry failed: connection timeout")
 		},
 	}
 

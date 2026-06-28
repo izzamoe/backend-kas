@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pocketbase/pocketbase/core"
+
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
 	"kas/internal/service"
 	"kas/internal/utils"
-
-	"github.com/pocketbase/pocketbase/core"
 )
 
 type digiflazzWebhookPingProbe struct {
@@ -75,7 +75,7 @@ func (h *DigiflazzWebhookHandler) RegisterRoutes(e *core.ServeEvent) {
 // @Failure 404 {object} map[string]any "Not found - invalid token"
 // @Failure 500 {object} map[string]any "Internal server error"
 // @Router /webhooks/digiflazz/{token} [post]
-func (h *DigiflazzWebhookHandler) Receive(e *core.RequestEvent) error {
+func (h *DigiflazzWebhookHandler) Receive(e *core.RequestEvent) error { //nolint:gocyclo,funlen // Webhook handler requires multiple status/type dispatch branches
 	token := strings.TrimSpace(e.Request.PathValue("token"))
 	if token == "" {
 		return e.NotFoundError("Webhook not found", nil)

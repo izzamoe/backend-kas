@@ -9,6 +9,7 @@ import (
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+
 	"kas/internal/handler"
 	"kas/internal/middleware"
 	"kas/internal/repository"
@@ -80,9 +81,7 @@ func TestFamilyHandler(t *testing.T) {
 			URL:             "/api/families",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindFamilyRoutes(app, e)
 			},
@@ -176,9 +175,7 @@ func TestFamilyHandler(t *testing.T) {
 			URL:             "/api/families/join",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindFamilyRoutes(app, e)
 			},
@@ -300,9 +297,7 @@ func TestFamilyHandler(t *testing.T) {
 			URL:             "/api/families/leave",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newTransactionTestApp(t)
-			},
+			TestAppFactory:  newTransactionTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindFamilyRoutes(app, e)
 			},

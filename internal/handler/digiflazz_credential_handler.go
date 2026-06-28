@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/hook"
+
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/middleware"
 	"kas/internal/service"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
 // DigiflazzCredentialHandler handles HTTP requests for Digiflazz credential management.

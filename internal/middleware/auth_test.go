@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"kas/internal/domain"
-	_ "kas/migrations"
-
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 	"github.com/pocketbase/pocketbase/tools/hook"
+
+	"kas/internal/domain"
+	_ "kas/migrations"
 )
 
 type mockFamilyMemberRepository struct {
@@ -181,9 +181,7 @@ func TestRequireAuthMiddleware(t *testing.T) {
 			URL:             "/middleware/auth",
 			ExpectedStatus:  http.StatusUnauthorized,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newMiddlewareTestApp(t)
-			},
+			TestAppFactory:  newMiddlewareTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindRequireAuthRoute(e)
 			},
@@ -226,9 +224,7 @@ func TestRequireFamilyMiddleware(t *testing.T) {
 			URL:             "/middleware/family-only",
 			ExpectedStatus:  http.StatusInternalServerError,
 			ExpectedContent: []string{`"message"`},
-			TestAppFactory: func(t testing.TB) *tests.TestApp {
-				return newMiddlewareTestApp(t)
-			},
+			TestAppFactory:  newMiddlewareTestApp,
 			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				bindRequireFamilyOnlyRoute(e, repo)
 			},

@@ -1,0 +1,217 @@
+version: "2"
+run:
+  tests: true
+
+linters:
+  default: none
+  enable:
+    # Bugs & Correctness (Critical)
+    - govet
+    - staticcheck
+    - errcheck
+    - errorlint
+    - bodyclose
+    - noctx
+    - durationcheck
+    - nilerr
+    - nilnesserr
+    - fatcontext
+    - contextcheck
+    - copyloopvar
+    - forcetypeassert
+    - makezero
+
+    # Security
+    - gosec
+
+    # Performance
+    - prealloc
+    - unconvert
+    - perfsprint
+
+    # Style & Maintainability
+    - gocyclo
+    - gocognit
+    - funlen
+    - nestif
+    - ineffassign
+    - unused
+    - misspell
+    - revive
+    - gocritic
+
+    # Modernization (Go 1.22+)
+    - intrange
+    - usestdlibvars
+    - modernize
+
+    # Testing Quality
+    - thelper
+    - tparallel
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+    gocognit:
+      min-complexity: 30
+    funlen:
+      lines: 80
+      statements: 50
+    nestif:
+      min-complexity: 4
+    misspell:
+      locale: US
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      # Exclude complexity checks in test files
+      - linters:
+          - gocyclo
+          - gocognit
+          - funlen
+          - nestif
+        path: _test\.go
+
+      # pbschema is a codegen template — fields are unused by design, comments may differ
+      - path: "pbschema/template\\.go"
+        linters: [unused, misspell, staticcheck]
+
+      # generated proxies are auto-generated — do not lint
+      - path: "generated/"
+        linters: [staticcheck, unused, errcheck, govet]
+
+      # Migration init() functions are inherently long
+      - path: "migrations/"
+        linters: [funlen, gocognit, gocyclo]
+
+      # errcheck: defer Close() in HTTP clients — error is unrecoverable after body read
+      - path: "internal/digiflazz/client\\.go"
+        linters: [errcheck]
+        text: "resp\\.Body\\.Close"
+
+      # errcheck: defer ResetBootstrapState / os.RemoveAll in bench tests
+      - path: "_bench_test\\.go|_test\\.go"
+        linters: [errcheck]
+        text: "ResetBootstrapState|os\\.RemoveAll"
+
+      # errcheck: DROP INDEX in migration rollback — best-effort, failure is acceptable
+      - path: "migrations/"
+        linters: [errcheck]
+        text: "Execute"
+
+      # errcheck: rows.Close in migration
+      - path: "migrations/"
+        linters: [errcheck]
+        text: "rows\\.Close"
+
+      # errcheck: app.Save in integration test setup — failure surfaced via nil record
+      - path: "digiflazz_integration_test\\.go"
+        linters: [errcheck]
+        text: "app\\.Save"
+
+      # staticcheck QF1008: generated proxies embed Record — QF1008 on generated code
+      - path: "generated/"
+        linters: [staticcheck]
+        text: "QF1008"
+
+      # staticcheck QF1003: tagged switch suggestion — minor style, not blocking
+      - path: "internal/service/digiflazz_credential_service\\.go"
+        linters: [staticcheck]
+        text: "QF1003"
+
+      # contextcheck: InquiryPLN creates its own context by design (standalone lookup)
+      - path: "internal/service/digiflazz_order_utils\\.go"
+        linters: [contextcheck]
+
+      # contextcheck: executePostpaidInquiry/CheckPostpaidStatus inherit ctx via param
+      - path: "internal/service/digiflazz_postpaid_service\\.go"
+        linters: [contextcheck]
+
+      # contextcheck: executePrepaidOrder inherits ctx via param (false positive)
+      - path: "internal/service/digiflazz_prepaid_service\\.go"
+        linters: [contextcheck]
+
+      # contextcheck: CheckAndUpdateStatus inherits ctx via param (false positive)
+      - path: "internal/service/digiflazz_status_service\\.go"
+        linters: [contextcheck]
+
+      # errcheck: type assertions in test helpers — ok-form not supported in assignment
+      - path: "_test\\.go"
+        linters: [errcheck]
+        text: "type assertion"
+
+      # errcheck: type assertions in redaction/event test helpers
+      - path: "redaction_test\\.go|digiflazz_event_repository_test\\.go"
+        linters: [errcheck]
+
+      # errcheck/forcetypeassert: internal interface casts in finalize_service are guarded
+      - path: "internal/service/digiflazz_finalize_service\\.go"
+        linters: [errcheck, forcetypeassert]
+
+      # forcetypeassert: test assertions use direct form for conciseness
+      - path: "_test\\.go"
+        linters: [forcetypeassert]
+
+      # gosec G115: int→byte conversion is safe after bitshift in AES-256-GCM counter
+      - path: "internal/utils/encryption\\.go"
+        linters: [gosec]
+        text: "G115"
+
+      # gosec G101: test credentials/tokens are not real secrets
+      - path: "digiflazz_credential_handler_test\\.go|digiflazz_credential_service_test\\.go"
+        linters: [gosec]
+        text: "G101"
+
+      # gosec G101: collection names and env var names are not credentials
+      - path: "internal/repository/digiflazz_credential_repository\\.go|internal/service/digiflazz_credential_service\\.go"
+        linters: [gosec]
+        text: "G101"
+
+      # gosec G505: SHA1 required by Digiflazz webhook HMAC specification
+      - path: "internal/digiflazz/webhook\\.go"
+        linters: [gosec]
+        text: "G505"
+
+      # gosec G706: log injection in migration is controlled admin-only context
+      - path: "migrations/"
+        linters: [gosec]
+        text: "G706"
+
+      # nilerr: migration rollback returns nil on not-found — intentional
+      - path: "migrations/"
+        linters: [nilerr]
+
+      # usestdlibvars: 500 literal in test assertion
+      - path: "_test\\.go"
+        linters: [usestdlibvars]
+
+      # gofumpt: formatter version mismatch between golangci-lint internal and standalone gofumpt
+      - path: "internal/handler/"
+        linters: [gofumpt]
+
+      # thelper: inline lambda fields in ApiScenario structs are not test helpers
+      - path: "_test\\.go"
+        linters: [thelper]
+
+formatters:
+  enable:
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(kas)

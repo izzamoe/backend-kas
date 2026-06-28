@@ -1,11 +1,12 @@
 package middleware
 
 import (
-	"kas/internal/repository"
 	"sync"
 	"time"
 
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/internal/repository"
 )
 
 // familyCache stores cached family membership lookups with TTL

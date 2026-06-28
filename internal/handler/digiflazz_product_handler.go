@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/hook"
+
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/middleware"
 	"kas/internal/service"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
 // DigiflazzProductHandler handles HTTP requests for Digiflazz product listing and sync.
