@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	digiflazzclient "kas/internal/digiflazz"
-	digiflazzdomain "kas/internal/domain/digiflazz"
-	"kas/internal/repository"
-	"kas/internal/utils"
-	_ "kas/migrations"
 	"strings"
 	"testing"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+
+	digiflazzclient "kas/internal/digiflazz"
+	digiflazzdomain "kas/internal/domain/digiflazz"
+	"kas/internal/repository"
+	"kas/internal/utils"
+	_ "kas/migrations"
 )
 
 type digiflazzCredentialServiceFixture struct {
@@ -38,9 +39,11 @@ type fakeProductRepoForCredSvc struct{}
 func (f *fakeProductRepoForCredSvc) Upsert(input *repository.UpsertProductInput) (*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeProductRepoForCredSvc) Search(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeProductRepoForCredSvc) GetBySKU(familyID, sku string) (*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
@@ -51,12 +54,15 @@ type fakeProductSvcForCredSvc struct{}
 func (f *fakeProductSvcForCredSvc) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
 	return nil, nil
 }
+
 func (f *fakeProductSvcForCredSvc) SyncPricelistWithCredential(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	return &SyncResult{}, nil
 }
+
 func (f *fakeProductSvcForCredSvc) SearchProducts(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeProductSvcForCredSvc) GetProductBySKU(familyID, sku string) (*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
@@ -140,6 +146,11 @@ func createServiceTestUser(t *testing.T, app core.App, email string) *core.Recor
 	return user
 }
 
+func webhookSecretPtr() *string {
+	s := "test-webhook-secret"
+	return &s
+}
+
 func TestDigiflazzCredentialServiceCreateCredential(t *testing.T) {
 	t.Run("owner creates encrypted credential after validation", func(t *testing.T) {
 		fx := setupDigiflazzCredentialServiceFixture(t)
@@ -147,9 +158,10 @@ func TestDigiflazzCredentialServiceCreateCredential(t *testing.T) {
 
 		testingTrue := true
 		got, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{
-			Username: " buyer ",
-			APIKey:   "secret-api-key-1234",
-			Testing:  &testingTrue,
+			Username:      " buyer ",
+			APIKey:        "secret-api-key-1234",
+			WebhookSecret: webhookSecretPtr(),
+			Testing:       &testingTrue,
 		})
 		if err != nil {
 			t.Fatalf("UpsertCredential returned error: %v", err)
@@ -220,7 +232,7 @@ func TestDigiflazzCredentialServiceCreateCredential(t *testing.T) {
 		fx := setupDigiflazzCredentialServiceFixture(t)
 		fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 1}, nil)
 
-		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-one"})
+		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-one", WebhookSecret: webhookSecretPtr()})
 		if err != nil {
 			t.Fatalf("first UpsertCredential returned error: %v", err)
 		}
@@ -245,7 +257,7 @@ func TestDigiflazzCredentialServiceTestWebhook(t *testing.T) {
 	t.Run("errors when webhook id is missing", func(t *testing.T) {
 		fx := setupDigiflazzCredentialServiceFixture(t)
 		fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 1}, nil)
-		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234"})
+		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookSecret: webhookSecretPtr()})
 		if err != nil {
 			t.Fatalf("UpsertCredential returned error: %v", err)
 		}
@@ -268,7 +280,7 @@ func TestDigiflazzCredentialServiceTestWebhook(t *testing.T) {
 			Hook:   digiflazzclient.WebhookPingHook{URL: "https://example.test/webhook", Secret: "must-not-leak", Type: "application/json", Status: 1},
 		}, nil)
 		webhookID := " hook-123 "
-		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookID: &webhookID})
+		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookID: &webhookID, WebhookSecret: webhookSecretPtr()})
 		if err != nil {
 			t.Fatalf("UpsertCredential returned error: %v", err)
 		}
@@ -327,7 +339,7 @@ func TestDigiflazzCredentialServiceCreateCredentialMissingEncryptionKey(t *testi
 func TestDigiflazzCredentialServiceUpdateAndBalance(t *testing.T) {
 	fx := setupDigiflazzCredentialServiceFixture(t)
 	fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 100000}, nil)
-	_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234"})
+	_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookSecret: webhookSecretPtr()})
 	if err != nil {
 		t.Fatalf("UpsertCredential returned error: %v", err)
 	}
@@ -369,7 +381,7 @@ func TestDigiflazzDepositService(t *testing.T) {
 		fx := setupDigiflazzCredentialServiceFixture(t)
 		fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 100000}, nil)
 		fx.fake.SetResponse("Deposit", digiflazzclient.DepositResponse{Rc: "00", Bank: "BCA", PaymentMethod: "transfer", AccountNo: "1234567890", Amount: 500000}, nil)
-		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234"})
+		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookSecret: webhookSecretPtr()})
 		if err != nil {
 			t.Fatalf("UpsertCredential returned error: %v", err)
 		}
@@ -401,7 +413,7 @@ func TestDigiflazzDepositService(t *testing.T) {
 		fx := setupDigiflazzCredentialServiceFixture(t)
 		fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 100000}, nil)
 		fx.fake.SetResponse("Deposit", digiflazzclient.DepositResponse{Rc: "00"}, nil)
-		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234"})
+		_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookSecret: webhookSecretPtr()})
 		if err != nil {
 			t.Fatalf("UpsertCredential returned error: %v", err)
 		}
@@ -422,7 +434,7 @@ func TestDigiflazzDepositService(t *testing.T) {
 func TestDigiflazzCredentialServiceUpdateValidationFailureDoesNotPersist(t *testing.T) {
 	fx := setupDigiflazzCredentialServiceFixture(t)
 	fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 100000}, nil)
-	_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234"})
+	_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookSecret: webhookSecretPtr()})
 	if err != nil {
 		t.Fatalf("UpsertCredential returned error: %v", err)
 	}
@@ -448,7 +460,7 @@ func TestDigiflazzCredentialServiceUpdateValidationFailureDoesNotPersist(t *test
 func TestDigiflazzCredentialServiceRotateAndDelete(t *testing.T) {
 	fx := setupDigiflazzCredentialServiceFixture(t)
 	fx.fake.SetResponse("CekSaldo", digiflazzclient.CekSaldoResponse{Deposit: 100000}, nil)
-	_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234"})
+	_, err := fx.svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{Username: "buyer", APIKey: "secret-api-key-1234", WebhookSecret: webhookSecretPtr()})
 	if err != nil {
 		t.Fatalf("UpsertCredential returned error: %v", err)
 	}

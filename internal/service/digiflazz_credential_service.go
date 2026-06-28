@@ -6,17 +6,18 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	digiflazzclient "kas/internal/digiflazz"
-	digiflazzdomain "kas/internal/domain/digiflazz"
-	"kas/internal/middleware"
-	"kas/internal/repository"
-	"kas/internal/utils"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pocketbase/pocketbase/core"
+
+	digiflazzclient "kas/internal/digiflazz"
+	digiflazzdomain "kas/internal/domain/digiflazz"
+	"kas/internal/middleware"
+	"kas/internal/repository"
+	"kas/internal/utils"
 )
 
 const digiflazzCredentialEncryptionKeyEnv = "DIGIFLAZZ_CREDENTIAL_ENCRYPTION_KEY"
@@ -75,7 +76,7 @@ func (s *digiflazzCredentialService) GetCredential(ctx context.Context, familyID
 	return s.credentialRepo.GetByFamilyID(familyID)
 }
 
-func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, familyID, userID string, req digiflazzdomain.UpsertCredentialRequest) (*digiflazzdomain.UpsertCredentialResult, error) {
+func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, familyID, userID string, req digiflazzdomain.UpsertCredentialRequest) (*digiflazzdomain.UpsertCredentialResult, error) { //nolint:gocognit,gocyclo,funlen // Credential upsert has complex create-or-update branching
 	familyID = strings.TrimSpace(familyID)
 	if err := s.requireOwner(familyID, userID); err != nil {
 		return nil, err
@@ -107,7 +108,8 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 		return nil, err
 	}
 
-	if count == 0 {
+	switch count {
+	case 0:
 		token := utils.GenerateWebhookToken()
 		tokenHash := utils.HashString(token)
 		rawWebhookToken = token
@@ -115,6 +117,11 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 		webhookSecret := ""
 		if req.WebhookSecret != nil {
 			webhookSecret = strings.TrimSpace(*req.WebhookSecret)
+		}
+		if webhookSecret == "" {
+			// A webhook secret is mandatory so VerifyWebhookSignature can authenticate
+			// incoming Digiflazz webhooks; without it the signature check is bypassed.
+			return nil, errors.New("webhook secret is required")
 		}
 		webhookID := ""
 		if req.WebhookID != nil {
@@ -140,7 +147,7 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 		if err != nil {
 			return nil, err
 		}
-	} else if count == 1 {
+	case 1:
 		existing, err := s.credentialRepo.GetSecretByFamilyID(familyID)
 		if err != nil {
 			return nil, err
@@ -165,7 +172,14 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 		update.Testing = &testing
 		if req.WebhookSecret != nil {
 			webhookSecret := strings.TrimSpace(*req.WebhookSecret)
+			if webhookSecret == "" {
+				return nil, errors.New("webhook secret is required")
+			}
 			update.WebhookSecret = &webhookSecret
+		} else if strings.TrimSpace(existing.WebhookSecret) == "" {
+			// Editing a credential that has no stored secret: force one to be set so the
+			// webhook signature check is always active going forward.
+			return nil, errors.New("webhook secret is required")
 		}
 		if req.WebhookID != nil {
 			webhookID := strings.TrimSpace(*req.WebhookID)
@@ -180,7 +194,7 @@ func (s *digiflazzCredentialService) UpsertCredential(ctx context.Context, famil
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("data integrity error: multiple credentials found for family %s", familyID)
 	}
 
@@ -256,9 +270,6 @@ func (s *digiflazzCredentialService) RotateWebhookToken(ctx context.Context, fam
 	}
 
 	token := utils.GenerateWebhookToken()
-	if token == "" {
-		return nil, errors.New("failed to generate webhook token")
-	}
 	tokenHash := utils.HashString(token)
 	credential, err := s.credentialRepo.Update(existing.ID, &repository.DigiflazzCredentialUpdateData{WebhookTokenHash: &tokenHash})
 	if err != nil {
