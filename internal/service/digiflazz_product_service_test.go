@@ -4,12 +4,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
+
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
 	_ "kas/migrations"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 func setupDigiflazzPriceServiceTestApp(t *testing.T) (*tests.TestApp, string, string) {

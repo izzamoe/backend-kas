@@ -2,14 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/pocketbase/pocketbase/core"
 
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
 	"kas/internal/utils"
-
-	"github.com/pocketbase/pocketbase/core"
 )
 
 type SyncResult struct {
@@ -86,7 +87,7 @@ func (s *digiflazzProductService) doSyncWithClient(ctx context.Context, client d
 
 func (s *digiflazzProductService) SyncPricelistWithCredential(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	if credential == nil {
-		return nil, fmt.Errorf("digiflazz_product_svc: credential is required")
+		return nil, errors.New("digiflazz_product_svc: credential is required")
 	}
 	familyID := credential.FamilyID
 	credentialID := credential.ID
@@ -104,21 +105,21 @@ func (s *digiflazzProductService) SyncPricelistWithCredential(ctx context.Contex
 
 func (s *digiflazzProductService) SyncForFamily(ctx context.Context, familyID string) (*SyncResult, error) {
 	if familyID == "" {
-		return nil, fmt.Errorf("digiflazz_product_svc: familyID is required for SyncForFamily")
+		return nil, errors.New("digiflazz_product_svc: familyID is required for SyncForFamily")
 	}
 	credential, err := s.credentialRepo.GetActiveSecretByFamilyID(familyID)
 	if err != nil {
 		return nil, fmt.Errorf("digiflazz_product_svc: get active credential: %w", err)
 	}
 	if credential == nil {
-		return nil, fmt.Errorf("digiflazz_product_svc: no active credential found for family")
+		return nil, errors.New("digiflazz_product_svc: no active credential found for family")
 	}
 	return s.SyncPricelistWithCredential(ctx, credential)
 }
 
 func (s *digiflazzProductService) SearchProducts(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error) {
 	if familyID == "" {
-		return nil, fmt.Errorf("digiflazz_product_svc: familyID is required for SearchProducts")
+		return nil, errors.New("digiflazz_product_svc: familyID is required for SearchProducts")
 	}
 	if req == nil {
 		req = &digiflazzdomain.ProductSearchRequest{}
@@ -128,10 +129,10 @@ func (s *digiflazzProductService) SearchProducts(familyID string, req *digiflazz
 
 func (s *digiflazzProductService) GetProductBySKU(familyID, sku string) (*digiflazzdomain.ProductDTO, error) {
 	if familyID == "" {
-		return nil, fmt.Errorf("digiflazz_product_svc: familyID is required for GetProductBySKU")
+		return nil, errors.New("digiflazz_product_svc: familyID is required for GetProductBySKU")
 	}
 	if sku == "" {
-		return nil, fmt.Errorf("digiflazz_product_svc: sku must not be empty")
+		return nil, errors.New("digiflazz_product_svc: sku must not be empty")
 	}
 	return s.productRepo.GetBySKU(familyID, sku)
 }

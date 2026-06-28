@@ -3,12 +3,13 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"kas/internal/domain"
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
 	digiflazzmapper "kas/internal/service/digiflazz"
-	"strings"
-	"time"
 )
 
 // digiflazzOrderFinalizationRepository extends the order repository with
@@ -68,7 +69,7 @@ func (s *digiflazzOrderService) hasFinalizationDependencies() bool {
 	return true
 }
 
-func (s *digiflazzOrderService) finalizeSuccessOrder(order *digiflazzdomain.OrderDTO) (*digiflazzdomain.OrderDTO, error) {
+func (s *digiflazzOrderService) finalizeSuccessOrder(order *digiflazzdomain.OrderDTO) (*digiflazzdomain.OrderDTO, error) { //nolint:gocyclo // Order finalization requires multiple product type handling
 	if order == nil {
 		return nil, errors.New("digiflazz order is required")
 	}

@@ -3,11 +3,11 @@ package service
 import (
 	"testing"
 
+	"github.com/pocketbase/pocketbase/core"
+
 	"kas/internal/domain"
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
-
-	"github.com/pocketbase/pocketbase/core"
 )
 
 type digiflazzFinalizeFixture struct {

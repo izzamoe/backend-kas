@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pocketbase/pocketbase/core"
+
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
-
-	"github.com/pocketbase/pocketbase/core"
 )
 
 type DigiflazzCronService interface {

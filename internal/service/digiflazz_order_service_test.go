@@ -3,14 +3,15 @@ package service
 import (
 	"context"
 	"errors"
-	digiflazzclient "kas/internal/digiflazz"
-	digiflazzdomain "kas/internal/domain/digiflazz"
-	"kas/internal/repository"
-	"kas/internal/utils"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	digiflazzclient "kas/internal/digiflazz"
+	digiflazzdomain "kas/internal/domain/digiflazz"
+	"kas/internal/repository"
+	"kas/internal/utils"
 )
 
 type mockDigiflazzOrderRepo struct {
@@ -67,12 +68,15 @@ type fakeOrderTestProductSvc struct {
 func (f *fakeOrderTestProductSvc) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestProductSvc) SyncPricelistWithCredential(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestProductSvc) SearchProducts(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestProductSvc) GetProductBySKU(familyID, sku string) (*digiflazzdomain.ProductDTO, error) {
 	if f.getProductBySKUFn != nil {
 		return f.getProductBySKUFn(familyID, sku)
@@ -87,24 +91,30 @@ type fakeOrderTestCredRepo struct {
 func (f *fakeOrderTestCredRepo) Create(data *repository.DigiflazzCredentialCreateData) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) Update(id string, data *repository.DigiflazzCredentialUpdateData) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) GetByFamilyID(familyID string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) GetSecretByFamilyID(familyID string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) GetActiveSecretByFamilyID(familyID string) (*repository.DigiflazzCredentialRecord, error) {
 	if f.getActiveSecretFn != nil {
 		return f.getActiveSecretFn(familyID)
 	}
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) GetSecretByWebhookTokenHash(hash string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) GetActiveByFamilyID(familyID string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
@@ -113,15 +123,19 @@ func (f *fakeOrderTestCredRepo) Delete(id string) error                       { 
 func (f *fakeOrderTestCredRepo) GetByID(id string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) GetSecretByID(id string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) ListByFamilyID(familyID string, limit, offset int) ([]*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) Disable(id string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeOrderTestCredRepo) ListAllActive() ([]*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
@@ -194,13 +208,13 @@ func TestDigiflazzOrderServiceUpdateStatusTransitions(t *testing.T) {
 		wantErrSubstring string
 	}{
 		{name: "pending to processing allowed", current: digiflazzdomain.OrderStatusPending, next: digiflazzdomain.OrderStatusProcessing},
-		{name: "pending to cancelled allowed", current: digiflazzdomain.OrderStatusPending, next: digiflazzdomain.OrderStatusCancelled},
+		{name: "pending to canceled allowed", current: digiflazzdomain.OrderStatusPending, next: digiflazzdomain.OrderStatusCancelled},
 		{name: "processing to success allowed", current: digiflazzdomain.OrderStatusProcessing, next: digiflazzdomain.OrderStatusSuccess},
 		{name: "processing to failed allowed", current: digiflazzdomain.OrderStatusProcessing, next: digiflazzdomain.OrderStatusFailed},
 		{name: "pending to success denied", current: digiflazzdomain.OrderStatusPending, next: digiflazzdomain.OrderStatusSuccess, wantErrSubstring: "invalid digiflazz order status transition"},
 		{name: "terminal success cannot be overwritten", current: digiflazzdomain.OrderStatusSuccess, next: digiflazzdomain.OrderStatusFailed, wantErrSubstring: "invalid digiflazz order status transition"},
 		{name: "terminal failed cannot be overwritten", current: digiflazzdomain.OrderStatusFailed, next: digiflazzdomain.OrderStatusProcessing, wantErrSubstring: "invalid digiflazz order status transition"},
-		{name: "terminal cancelled cannot be overwritten", current: digiflazzdomain.OrderStatusCancelled, next: digiflazzdomain.OrderStatusProcessing, wantErrSubstring: "invalid digiflazz order status transition"},
+		{name: "terminal canceled cannot be overwritten", current: digiflazzdomain.OrderStatusCancelled, next: digiflazzdomain.OrderStatusProcessing, wantErrSubstring: "invalid digiflazz order status transition"},
 	}
 
 	for _, tt := range tests {

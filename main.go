@@ -3,10 +3,6 @@ package main
 import (
 	"embed"
 	"io/fs"
-	"kas/internal/handler"
-	"kas/internal/middleware"
-	"kas/internal/repository"
-	"kas/internal/service"
 	"log"
 	"os"
 
@@ -17,6 +13,10 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"github.com/pocketbase/pocketbase/tools/osutils"
 
+	"kas/internal/handler"
+	"kas/internal/middleware"
+	"kas/internal/repository"
+	"kas/internal/service"
 	// Enable migrations
 	_ "kas/migrations"
 )
@@ -31,7 +31,7 @@ var publicFiles embed.FS
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-func main() {
+func main() { //nolint:funlen // Dependency injection wiring requires all components
 	publicFS, err := fs.Sub(publicFiles, "pb_public")
 	if err != nil {
 		log.Fatal(err)

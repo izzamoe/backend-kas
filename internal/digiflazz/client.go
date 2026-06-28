@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -95,7 +96,7 @@ type dataErrorResponse struct {
 	Message string `json:"message"`
 }
 
-func (c *client) post(ctx context.Context, path string, body any, out any) error {
+func (c *client) post(ctx context.Context, path string, body any, out any) error { //nolint:gocyclo // HTTP retry logic with multiple error type handling
 	b, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("digiflazz: marshal request: %w", err)
@@ -235,7 +236,7 @@ func (c *client) Deposit(ctx context.Context, req *DepositRequest) (*DepositResp
 func (c *client) TestWebhookPing(ctx context.Context, webhookID string) (*WebhookPingResponse, error) {
 	webhookID = strings.TrimSpace(webhookID)
 	if webhookID == "" {
-		return nil, fmt.Errorf("digiflazz webhook id is required")
+		return nil, errors.New("digiflazz webhook id is required")
 	}
 
 	var resp WebhookPingResponse

@@ -19,12 +19,15 @@ type mockDigiflazzPascaProductService struct {
 func (m *mockDigiflazzPascaProductService) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaProductService) SyncPricelistWithCredential(_ context.Context, _ *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaProductService) SearchProducts(_ string, _ *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaProductService) GetProductBySKU(_, sku string) (*digiflazzdomain.ProductDTO, error) {
 	return m.product, m.err
 }
@@ -36,27 +39,35 @@ type mockDigiflazzPascaCredentialRepo struct {
 func (m *mockDigiflazzPascaCredentialRepo) Create(*repository.DigiflazzCredentialCreateData) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) GetByID(string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) GetSecretByID(string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) GetByFamilyID(string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) GetSecretByFamilyID(string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) GetActiveByFamilyID(string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) GetActiveSecretByFamilyID(string) (*repository.DigiflazzCredentialRecord, error) {
 	return m.secret, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) GetSecretByWebhookTokenHash(string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) ListByFamilyID(string, int, int) ([]*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
@@ -64,6 +75,7 @@ func (m *mockDigiflazzPascaCredentialRepo) CountByFamilyID(string) (int, error) 
 func (m *mockDigiflazzPascaCredentialRepo) Update(string, *repository.DigiflazzCredentialUpdateData) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaCredentialRepo) Disable(string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
@@ -80,15 +92,19 @@ func (m *mockDigiflazzPascaEventRepo) Create(data *repository.DigiflazzEventCrea
 	m.created = append(m.created, data)
 	return &repository.DigiflazzEventRecord{ID: "event1", OrderID: data.OrderID, EventType: data.EventType}, nil
 }
+
 func (m *mockDigiflazzPascaEventRepo) GetByID(string) (*repository.DigiflazzEventRecord, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaEventRepo) GetByFamilyAndID(string, string) (*repository.DigiflazzEventRecord, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaEventRepo) ListByFamilyID(string, int, int) ([]*repository.DigiflazzEventRecord, error) {
 	return nil, nil
 }
+
 func (m *mockDigiflazzPascaEventRepo) ExistsByOrderAndPayloadHash(string, string) (bool, error) {
 	return false, nil
 }

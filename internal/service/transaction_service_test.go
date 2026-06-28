@@ -2,12 +2,13 @@ package service
 
 import (
 	"errors"
-	"kas/internal/domain"
-	"kas/internal/repository"
 	"strings"
 	"testing"
 
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/internal/domain"
+	"kas/internal/repository"
 )
 
 // mockTransactionRepo is a mock implementation of repository.TransactionRepository.
@@ -682,17 +683,20 @@ func TestUpdateTransaction(t *testing.T) {
 				updateFn:       tt.mockUpdate,
 			}
 			categoryRepo := &mockCategoryRepo{}
-			if tt.req.CategoryID == "cat_error" {
+			switch tt.req.CategoryID {
+			case "cat_error":
 				categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {
 					return nil, errors.New("db down")
 				}
-			} else if tt.req.CategoryID == "missing" {
+			case "missing":
 				categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {
 					return nil, domain.ErrCategoryNotFound
 				}
-			} else if tt.req.CategoryID != "" {
-				categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {
-					return &repository.CategoryInfo{ID: id}, nil
+			default:
+				if tt.req.CategoryID != "" {
+					categoryRepo.getByIDFn = func(id string) (*repository.CategoryInfo, error) {
+						return &repository.CategoryInfo{ID: id}, nil
+					}
 				}
 			}
 			svc := NewTransactionService(repo, categoryRepo)

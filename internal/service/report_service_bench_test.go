@@ -5,16 +5,17 @@ import (
 	"testing"
 
 	"github.com/pocketbase/pocketbase"
-	_ "kas/migrations"
 
 	"kas/internal/domain"
 	"kas/internal/repository"
 	"kas/internal/service"
+	_ "kas/migrations"
 )
 
 // setupTestApp creates a minimal PocketBase instance for benchmarking.
 // It uses a temp directory so it doesn't pollute the real pb_data.
 func setupTestApp(tb testing.TB) *pocketbase.PocketBase {
+	tb.Helper()
 	dir, err := os.MkdirTemp("", "pb_bench_*")
 	if err != nil {
 		tb.Fatalf("failed to create temp dir: %v", err)
@@ -46,7 +47,7 @@ func BenchmarkGetMonthlyReport(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = reportService.GetMonthlyReport(req)
 	}
 }
@@ -65,7 +66,7 @@ func BenchmarkGetDashboardSummary(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = reportService.GetDashboardSummary(req)
 	}
 }

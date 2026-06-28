@@ -18,15 +18,18 @@ type fakeCronProductService struct {
 func (f *fakeCronProductService) SyncForFamily(_ context.Context, _ string) (*SyncResult, error) {
 	return nil, nil
 }
+
 func (f *fakeCronProductService) SyncPricelistWithCredential(ctx context.Context, credential *repository.DigiflazzCredentialRecord) (*SyncResult, error) {
 	if f.syncPricelistWithCredentialFn != nil {
 		return f.syncPricelistWithCredentialFn(ctx, credential)
 	}
 	return nil, nil
 }
+
 func (f *fakeCronProductService) SearchProducts(familyID string, req *digiflazzdomain.ProductSearchRequest) ([]*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronProductService) GetProductBySKU(familyID, sku string) (*digiflazzdomain.ProductDTO, error) {
 	return nil, nil
 }
@@ -38,36 +41,46 @@ type fakeCronOrderService struct {
 func (f *fakeCronOrderService) CreateOrder(ctx context.Context, familyID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) CreatePrepaidOrder(ctx context.Context, req *digiflazzdomain.CreateOrderRequest, userID, familyID string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) CreatePostpaidInquiry(ctx context.Context, req *digiflazzdomain.CreateOrderRequest, userID, familyID string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) PayPostpaidOrder(ctx context.Context, familyID, userID, orderID string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) CheckPostpaidStatus(ctx context.Context, familyID, userID, orderID string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) GetOrder(familyID, id string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) ListFamilyOrders(familyID string, page, pageSize int) ([]*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) UpdateStatus(familyID, id string, status digiflazzdomain.OrderStatus, response *digiflazzdomain.OrderResponseDTO) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) FinalizeSuccessOrder(orderID string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) CheckAndUpdateStatus(ctx context.Context, orderID string) (*digiflazzdomain.OrderDTO, error) {
 	if f.checkAndUpdateStatusFn != nil {
 		return f.checkAndUpdateStatusFn(ctx, orderID)
 	}
 	return nil, nil
 }
+
 func (f *fakeCronOrderService) InquiryPLN(_ context.Context, _, _ string) (*digiflazzdomain.PLNInquiryResult, error) {
 	return nil, nil
 }
@@ -79,42 +92,55 @@ type fakeCronCredentialRepo struct {
 func (f *fakeCronCredentialRepo) Create(data *repository.DigiflazzCredentialCreateData) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) GetByID(id string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) GetSecretByID(id string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) GetByFamilyID(familyID string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) GetSecretByFamilyID(familyID string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) GetActiveByFamilyID(familyID string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) GetActiveSecretByFamilyID(familyID string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) ListByFamilyID(familyID string, limit, offset int) ([]*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) CountByFamilyID(familyID string) (int, error) {
 	return 0, nil
 }
+
 func (f *fakeCronCredentialRepo) Update(id string, data *repository.DigiflazzCredentialUpdateData) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) Disable(id string) (*digiflazzdomain.CredentialDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) Delete(id string) error {
 	return nil
 }
+
 func (f *fakeCronCredentialRepo) GetSecretByWebhookTokenHash(tokenHash string) (*repository.DigiflazzCredentialRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeCronCredentialRepo) ListAllActive() ([]*repository.DigiflazzCredentialRecord, error) {
 	if f.listAllActiveFn != nil {
 		return f.listAllActiveFn()
@@ -129,18 +155,23 @@ type fakeCronOrderRepo struct {
 func (f *fakeCronOrderRepo) Create(params repository.CreateDigiflazzOrderParams) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderRepo) GetByID(familyID, id string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderRepo) GetByRefID(familyID, refID string) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderRepo) UpdateStatus(familyID, id string, params repository.UpdateDigiflazzOrderStatusParams) (*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderRepo) ListByFamily(familyID string, limit, offset int) ([]*digiflazzdomain.OrderDTO, error) {
 	return nil, nil
 }
+
 func (f *fakeCronOrderRepo) ListPendingForPoll(createdAfter time.Time, limit int) ([]*digiflazzdomain.OrderDTO, error) {
 	if f.listPendingForPollFn != nil {
 		return f.listPendingForPollFn(createdAfter, limit)
@@ -163,15 +194,19 @@ func (f *fakeCronEventRepo) Create(data *repository.DigiflazzEventCreateData) (*
 	}
 	return nil, nil
 }
+
 func (f *fakeCronEventRepo) GetByID(id string) (*repository.DigiflazzEventRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeCronEventRepo) GetByFamilyAndID(familyID, id string) (*repository.DigiflazzEventRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeCronEventRepo) ListByFamilyID(familyID string, limit, offset int) ([]*repository.DigiflazzEventRecord, error) {
 	return nil, nil
 }
+
 func (f *fakeCronEventRepo) ExistsByOrderAndPayloadHash(orderID, payloadHash string) (bool, error) {
 	return false, nil
 }

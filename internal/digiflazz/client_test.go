@@ -622,7 +622,7 @@ func TestClient_NonTwoXXResponse(t *testing.T) {
 	if !errors.As(err, &dfErr) {
 		t.Fatalf("expected *DigiflazzError, got %T: %v", err, err)
 	}
-	if dfErr.StatusCode != 500 {
+	if dfErr.StatusCode != http.StatusInternalServerError {
 		t.Errorf("StatusCode: got %d want 500", dfErr.StatusCode)
 	}
 }
@@ -652,7 +652,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 
 	_, err := testClient(srv).CekSaldo(ctx)
 	if err == nil {
-		t.Fatal("expected error for cancelled context, got nil")
+		t.Fatal("expected error for canceled context, got nil")
 	}
 }
 

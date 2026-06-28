@@ -2,8 +2,9 @@ package digiflazz
 
 import (
 	"crypto/hmac"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // G505: SHA1 required by Digiflazz webhook signature
 	"encoding/hex"
+	"errors"
 	"testing"
 )
 
@@ -27,7 +28,7 @@ func TestVerifyWebhookSignature_Invalid(t *testing.T) {
 	signature := testSignature("mysecret", rawBody)
 
 	err := VerifyWebhookSignature("wrongsecret", "sha1="+signature, rawBody)
-	if err != ErrSignatureMismatch {
+	if !errors.Is(err, ErrSignatureMismatch) {
 		t.Fatalf("expected ErrSignatureMismatch, got %v", err)
 	}
 }
@@ -37,7 +38,7 @@ func TestVerifyWebhookSignature_MissingPrefix(t *testing.T) {
 	signature := testSignature("mysecret", rawBody)
 
 	err := VerifyWebhookSignature("mysecret", signature, rawBody)
-	if err != ErrInvalidSignatureFormat {
+	if !errors.Is(err, ErrInvalidSignatureFormat) {
 		t.Fatalf("expected ErrInvalidSignatureFormat, got %v", err)
 	}
 }

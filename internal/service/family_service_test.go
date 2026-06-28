@@ -2,14 +2,15 @@ package service
 
 import (
 	"errors"
-	"kas/internal/domain"
-	_ "kas/migrations"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/internal/domain"
+	_ "kas/migrations"
 )
 
 func setupFamilyServiceTestApp(t *testing.T) *pocketbase.PocketBase {
@@ -241,7 +242,7 @@ func TestCreateFamilySuccessAndTransactionErrors(t *testing.T) {
 }
 
 func TestGenerateInviteCode(t *testing.T) {
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		code, err := generateInviteCode()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -444,7 +445,6 @@ func TestLeaveFamily(t *testing.T) {
 		svc := NewFamilyService(&mockFamilyRepo{}, memberRepo, nil, func(string) { called = true })
 
 		err := svc.LeaveFamily("user1")
-
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
-	"strings"
 )
 
 // CheckAndUpdateStatus polls the Digiflazz API for the current status of a pending or

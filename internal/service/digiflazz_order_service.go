@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
+	"github.com/pocketbase/pocketbase/core"
+
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/middleware"
 	"kas/internal/repository"
 	"kas/internal/utils"
-	"strings"
-	"time"
-
-	"github.com/pocketbase/pocketbase/core"
 )
 
 type DigiflazzOrderService interface {
@@ -70,7 +71,7 @@ func NewDigiflazzOrderService(orderRepo repository.DigiflazzOrderRepository, dep
 	return svc
 }
 
-func (s *digiflazzOrderService) CreateOrder(ctx context.Context, familyID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) {
+func (s *digiflazzOrderService) CreateOrder(ctx context.Context, familyID, createdBy string, req digiflazzdomain.CreateOrderRequest) (*digiflazzdomain.OrderDTO, error) { //nolint:gocyclo // Order creation orchestrates multiple sub-flows
 	if familyID == "" {
 		return nil, errors.New("family id is required")
 	}

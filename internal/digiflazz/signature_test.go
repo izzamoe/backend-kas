@@ -1,15 +1,15 @@
 package digiflazz
 
 import (
-	"crypto/md5"
-	"fmt"
+	"crypto/md5" //nolint:gosec // G501: MD5 required by Digiflazz API specification
+	"encoding/hex"
 	"strings"
 	"testing"
 )
 
 func expectedMD5(input string) string {
-	sum := md5.Sum([]byte(input))
-	return fmt.Sprintf("%x", sum)
+	sum := md5.Sum([]byte(input)) //nolint:gosec // G401: MD5 required by Digiflazz API specification
+	return hex.EncodeToString(sum[:])
 }
 
 func TestSignDepo(t *testing.T) {

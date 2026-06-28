@@ -20,7 +20,7 @@ type WebhookPayload struct {
 	CustomerName   string            `json:"customer_name,omitempty"`
 	BuyerSKUCode   string            `json:"buyer_sku_code"`
 	Message        string            `json:"message"`
-	Status         TransactionStatus  `json:"status"`
+	Status         TransactionStatus `json:"status"`
 	Rc             string            `json:"rc"`
 	Sn             string            `json:"sn,omitempty"`
 	BuyerLastSaldo float64           `json:"buyer_last_saldo,omitempty"`

@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
-	"strings"
-	"time"
 )
 
-func (s *digiflazzOrderService) executePrepaidOrder(ctx context.Context, client digiflazzclient.DigiflazzClient, familyID, createdBy, credentialID, refID string, req digiflazzdomain.CreateOrderRequest, product *digiflazzdomain.ProductDTO) (*digiflazzdomain.OrderDTO, error) {
+func (s *digiflazzOrderService) executePrepaidOrder(ctx context.Context, client digiflazzclient.DigiflazzClient, familyID, createdBy, credentialID, refID string, req digiflazzdomain.CreateOrderRequest, product *digiflazzdomain.ProductDTO) (*digiflazzdomain.OrderDTO, error) { //nolint:gocyclo,funlen // Prepaid order execution requires multiple product type handling
 	if ctx == nil {
 		ctx = context.Background()
 	}

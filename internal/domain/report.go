@@ -19,9 +19,9 @@ type MonthlyReportDTO struct {
 	Month            int                    `json:"month" example:"4"`
 	TotalIncome      float64                `json:"total_income" example:"5000000"`
 	TotalExpense     float64                `json:"total_expense" example:"1800000"`
-	Balance          float64                `json:"balance" example:"3200000"`           // TotalIncome - TotalExpense
-	ExpenseBreakdown []CategoryBreakdownDTO `json:"expense_breakdown"`                     // Breakdown per category for expenses
-	IncomeBreakdown  []CategoryBreakdownDTO `json:"income_breakdown"`                      // Breakdown per category for income
+	Balance          float64                `json:"balance" example:"3200000"` // TotalIncome - TotalExpense
+	ExpenseBreakdown []CategoryBreakdownDTO `json:"expense_breakdown"`         // Breakdown per category for expenses
+	IncomeBreakdown  []CategoryBreakdownDTO `json:"income_breakdown"`          // Breakdown per category for income
 }
 
 // MonthlyReportRequest represents request parameters for monthly report
@@ -36,11 +36,11 @@ type MonthlyReportRequest struct {
 type DashboardSummaryDTO struct {
 	FamilyName           string  `json:"family_name" example:"Keluarga Bahagia"`
 	UserName             string  `json:"user_name" example:"Budi"`
-	TotalBalance         float64 `json:"total_balance" example:"12000000"`          // Overall balance
-	MonthlyIncome        float64 `json:"monthly_income" example:"5000000"`          // This month's income
-	MonthlyIncomeChange  float64 `json:"monthly_income_change" example:"10.5"`      // % change from prev month
-	MonthlyExpense       float64 `json:"monthly_expense" example:"1800000"`         // This month's expense
-	MonthlyExpenseChange float64 `json:"monthly_expense_change" example:"-5.2"`     // % change from prev month
+	TotalBalance         float64 `json:"total_balance" example:"12000000"`      // Overall balance
+	MonthlyIncome        float64 `json:"monthly_income" example:"5000000"`      // This month's income
+	MonthlyIncomeChange  float64 `json:"monthly_income_change" example:"10.5"`  // % change from prev month
+	MonthlyExpense       float64 `json:"monthly_expense" example:"1800000"`     // This month's expense
+	MonthlyExpenseChange float64 `json:"monthly_expense_change" example:"-5.2"` // % change from prev month
 }
 
 // DashboardSummaryRequest represents request for dashboard summary

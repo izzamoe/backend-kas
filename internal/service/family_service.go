@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"kas/internal/domain"
-	"kas/internal/repository"
 	"math/big"
 
 	"github.com/pocketbase/pocketbase/core"
+
+	"kas/internal/domain"
+	"kas/internal/repository"
 )
 
 // FamilyService interface - business logic layer for family management

@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tests"
+
 	digiflazzclient "kas/internal/digiflazz"
 	digiflazzdomain "kas/internal/domain/digiflazz"
 	"kas/internal/repository"
 	_ "kas/migrations"
-
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 // ---------------------------------------------------------------------------
@@ -136,10 +136,12 @@ func (fx *digiflazzE2EFixture) createCredential(t *testing.T) {
 		return fx.fake
 	}, fx.productRepo, fx.productService())
 	testingTrue := true
+	webhookSecret := "e2e-webhook-secret"
 	_, err := svc.UpsertCredential(context.Background(), fx.familyID, fx.ownerID, digiflazzdomain.UpsertCredentialRequest{
-		Username: "e2e-buyer",
-		APIKey:   "test-api-key-1234",
-		Testing:  &testingTrue,
+		Username:      "e2e-buyer",
+		APIKey:        "test-api-key-1234",
+		WebhookSecret: &webhookSecret,
+		Testing:       &testingTrue,
 	})
 	if err != nil {
 		t.Fatalf("create credential: %v", err)
