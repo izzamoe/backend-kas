@@ -23,6 +23,7 @@ type TransactionService interface {
 type transactionService struct {
 	transactionRepo repository.TransactionRepository
 	categoryRepo    repository.CategoryRepository
+	fetchRate       rateFetcher
 }
 
 // NewTransactionService creates new transaction service
@@ -30,6 +31,7 @@ func NewTransactionService(transactionRepo repository.TransactionRepository, cat
 	return &transactionService{
 		transactionRepo: transactionRepo,
 		categoryRepo:    categoryRepo,
+		fetchRate:       defaultRateFetcher,
 	}
 }
 
@@ -62,6 +64,10 @@ func (s *transactionService) CreateTransaction(req *domain.CreateTransactionRequ
 	if !category.IsDefault && category.FamilyID != familyID {
 		return nil, errors.New("category does not belong to this family")
 	}
+
+	// Kurs diambil dari API live; kalau gagal, dua-duanya jadi 0 dan
+	// transaksi tetap dibuat.
+	req.AmountUSD, req.ExchangeRate = s.convertToUSD(req.Amount)
 
 	return s.transactionRepo.Create(req, userID, familyID)
 }
@@ -152,6 +158,11 @@ func (s *transactionService) UpdateTransaction(id, userID string, req *domain.Up
 	// Validate type if provided
 	if req.Type != "" && req.Type != domain.TransactionTypeIncome && req.Type != domain.TransactionTypeExpense {
 		return nil, errors.New("type must be either 'income' or 'expense'")
+	}
+
+	// Amount berubah -> nilai USD ikut dihitung ulang dengan kurs terbaru
+	if req.Amount > 0 {
+		req.AmountUSD, req.ExchangeRate = s.convertToUSD(req.Amount)
 	}
 
 	// Validate category if being updated

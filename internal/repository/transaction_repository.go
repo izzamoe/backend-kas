@@ -85,6 +85,8 @@ func (r *transactionRepo) Create(req *domain.CreateTransactionRequest, userID, f
 	record.Set("category_id", req.CategoryID)
 	record.Set("type", string(req.Type))
 	record.Set("amount", req.Amount)
+	record.Set("amount_usd", req.AmountUSD)
+	record.Set("exchange_rate", req.ExchangeRate)
 	record.Set("note", req.Note)
 	record.Set("date", req.Date)
 
@@ -228,6 +230,8 @@ func (r *transactionRepo) Update(id string, req *domain.UpdateTransactionRequest
 	}
 	if req.Amount > 0 {
 		record.Set("amount", req.Amount)
+		record.Set("amount_usd", req.AmountUSD)
+		record.Set("exchange_rate", req.ExchangeRate)
 	}
 	if req.Note != "" {
 		record.Set("note", req.Note)
@@ -262,24 +266,26 @@ func (r *transactionRepo) GetCreatorID(id string) (string, error) {
 	return record.GetString("created_by"), nil
 }
 
-// GetTotalByFamily calculates total for a family using single CASE WHEN query
+// GetTotalByFamily reads from materialized family_balances table (O(1)), falls back to SUM query
 func (r *transactionRepo) GetTotalByFamily(familyID string) (float64, error) {
 	var balance float64
 
-	query := `
-		SELECT 
-			COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) -
-			COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0)
-		FROM transactions 
-		WHERE family_id = {:familyID}
-	`
-
-	err := r.app.DB().NewQuery(query).Bind(map[string]any{"familyID": familyID}).Row(&balance)
+	err := r.app.DB().NewQuery(
+		"SELECT COALESCE(balance, 0) FROM family_balances WHERE family_id = {:familyID}",
+	).Bind(map[string]any{"familyID": familyID}).Row(&balance)
 	if err != nil {
-		return 0, err
+		// Fallback to SUM query if materialized table not available
+		query := `
+			SELECT
+				COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) -
+				COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0)
+			FROM transactions
+			WHERE family_id = {:familyID}
+		`
+		err = r.app.DB().NewQuery(query).Bind(map[string]any{"familyID": familyID}).Row(&balance)
 	}
 
-	return balance, nil
+	return balance, err
 }
 
 func (r *transactionRepo) GetMonthlyStats(familyID string, year, month int) (income, expense float64, err error) {
@@ -393,6 +399,25 @@ func (r *transactionRepo) GetMonthlyReportData(familyID string, year, month int)
 }
 
 func (r *transactionRepo) GetDashboardData(familyID string, year, month int) (totalBalance, monthlyIncome, monthlyExpense, prevIncome, prevExpense float64, err error) {
+	// 1. Balance from materialized table (O(1) index lookup)
+	err = r.app.DB().NewQuery(
+		"SELECT COALESCE(balance, 0) FROM family_balances WHERE family_id = {:familyID}",
+	).Bind(map[string]any{"familyID": familyID}).Row(&totalBalance)
+	if err != nil {
+		// Fallback: compute balance from transactions (table or row missing in tests)
+		err = r.app.DB().NewQuery(`
+			SELECT
+				COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) -
+				COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0)
+			FROM transactions
+			WHERE family_id = {:familyID}
+		`).Bind(map[string]any{"familyID": familyID}).Row(&totalBalance)
+		if err != nil {
+			totalBalance = 0
+		}
+	}
+
+	// 2. Monthly stats via covering index (family_id, type, date, amount)
 	startDate, endDate := dateRange(year, month)
 
 	prevYear, prevMon := year, month-1
@@ -402,16 +427,17 @@ func (r *transactionRepo) GetDashboardData(familyID string, year, month int) (to
 	}
 	prevStartDate, prevEndDate := dateRange(prevYear, prevMon)
 
+	minDate := min(startDate, prevStartDate)
+
 	query := `
 		SELECT
-			COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) -
-			COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_balance,
 			COALESCE(SUM(CASE WHEN type = 'income' AND date >= {:startDate} AND date < {:endDate} THEN amount ELSE 0 END), 0) as monthly_income,
 			COALESCE(SUM(CASE WHEN type = 'expense' AND date >= {:startDate} AND date < {:endDate} THEN amount ELSE 0 END), 0) as monthly_expense,
 			COALESCE(SUM(CASE WHEN type = 'income' AND date >= {:prevStartDate} AND date < {:prevEndDate} THEN amount ELSE 0 END), 0) as prev_income,
 			COALESCE(SUM(CASE WHEN type = 'expense' AND date >= {:prevStartDate} AND date < {:prevEndDate} THEN amount ELSE 0 END), 0) as prev_expense
 		FROM transactions
 		WHERE family_id = {:familyID}
+		AND date >= {:minDate}
 	`
 
 	err = r.app.DB().NewQuery(query).Bind(map[string]any{
@@ -420,7 +446,8 @@ func (r *transactionRepo) GetDashboardData(familyID string, year, month int) (to
 		"endDate":       endDate,
 		"prevStartDate": prevStartDate,
 		"prevEndDate":   prevEndDate,
-	}).Row(&totalBalance, &monthlyIncome, &monthlyExpense, &prevIncome, &prevExpense)
+		"minDate":       minDate,
+	}).Row(&monthlyIncome, &monthlyExpense, &prevIncome, &prevExpense)
 
 	return
 }
@@ -439,13 +466,15 @@ func (r *transactionRepo) recordToDTO(record *core.Record) (*domain.TransactionD
 	}
 
 	dto := &domain.TransactionDTO{
-		ID:        proxy.Id,
-		Type:      domain.TransactionType(typeStr),
-		Amount:    proxy.Amount(),
-		Note:      proxy.Note(),
-		Date:      proxy.Date().Time(),
-		CreatedAt: proxy.Created().Time(),
-		UpdatedAt: proxy.Updated().Time(),
+		ID:           proxy.Id,
+		Type:         domain.TransactionType(typeStr),
+		Amount:       proxy.Amount(),
+		AmountUSD:    proxy.AmountUsd(),
+		ExchangeRate: proxy.ExchangeRate(),
+		Note:         proxy.Note(),
+		Date:         proxy.Date().Time(),
+		CreatedAt:    proxy.Created().Time(),
+		UpdatedAt:    proxy.Updated().Time(),
 	}
 
 	// Handle expanded family relation (nil check)

@@ -61,6 +61,21 @@ type DigiflazzEventsEnrichEvent = ProxyRecordEnrichEvent[DigiflazzEvents, *Digif
 type DigiflazzEventsErrorEvent = ProxyRecordErrorEvent[DigiflazzEvents, *DigiflazzEvents]
 type DigiflazzEventsListRequestEvent = ProxyRecordsListRequestEvent[DigiflazzEvents, *DigiflazzEvents]
 type DigiflazzEventsRequestEvent = ProxyRecordRequestEvent[DigiflazzEvents, *DigiflazzEvents]
+type ExpenseRequestsEvent = ProxyRecordEvent[ExpenseRequests, *ExpenseRequests]
+type ExpenseRequestsEnrichEvent = ProxyRecordEnrichEvent[ExpenseRequests, *ExpenseRequests]
+type ExpenseRequestsErrorEvent = ProxyRecordErrorEvent[ExpenseRequests, *ExpenseRequests]
+type ExpenseRequestsListRequestEvent = ProxyRecordsListRequestEvent[ExpenseRequests, *ExpenseRequests]
+type ExpenseRequestsRequestEvent = ProxyRecordRequestEvent[ExpenseRequests, *ExpenseRequests]
+type NotificationsEvent = ProxyRecordEvent[Notifications, *Notifications]
+type NotificationsEnrichEvent = ProxyRecordEnrichEvent[Notifications, *Notifications]
+type NotificationsErrorEvent = ProxyRecordErrorEvent[Notifications, *Notifications]
+type NotificationsListRequestEvent = ProxyRecordsListRequestEvent[Notifications, *Notifications]
+type NotificationsRequestEvent = ProxyRecordRequestEvent[Notifications, *Notifications]
+type FamilyBalancesEvent = ProxyRecordEvent[FamilyBalances, *FamilyBalances]
+type FamilyBalancesEnrichEvent = ProxyRecordEnrichEvent[FamilyBalances, *FamilyBalances]
+type FamilyBalancesErrorEvent = ProxyRecordErrorEvent[FamilyBalances, *FamilyBalances]
+type FamilyBalancesListRequestEvent = ProxyRecordsListRequestEvent[FamilyBalances, *FamilyBalances]
+type FamilyBalancesRequestEvent = ProxyRecordRequestEvent[FamilyBalances, *FamilyBalances]
 
 // This struct is a container for all proxy hooks.
 // Use NewProxyHooks(app core.App) to create it once.
@@ -274,6 +289,63 @@ type ProxyHooks struct {
 	OnDigiflazzEventsCreateRequest           *hook.Hook[*DigiflazzEventsRequestEvent]
 	OnDigiflazzEventsUpdateRequest           *hook.Hook[*DigiflazzEventsRequestEvent]
 	OnDigiflazzEventsDeleteRequest           *hook.Hook[*DigiflazzEventsRequestEvent]
+	OnExpenseRequestsEnrich                  *hook.Hook[*ExpenseRequestsEnrichEvent]
+	OnExpenseRequestsValidate                *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsCreate                  *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsCreateExecute           *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsAfterCreateSuccess      *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsAfterCreateError        *hook.Hook[*ExpenseRequestsErrorEvent]
+	OnExpenseRequestsUpdate                  *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsUpdateExecute           *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsAfterUpdateSuccess      *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsAfterUpdateError        *hook.Hook[*ExpenseRequestsErrorEvent]
+	OnExpenseRequestsDelete                  *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsDeleteExecute           *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsAfterDeleteSuccess      *hook.Hook[*ExpenseRequestsEvent]
+	OnExpenseRequestsAfterDeleteError        *hook.Hook[*ExpenseRequestsErrorEvent]
+	OnExpenseRequestsListRequest             *hook.Hook[*ExpenseRequestsListRequestEvent]
+	OnExpenseRequestsViewRequest             *hook.Hook[*ExpenseRequestsRequestEvent]
+	OnExpenseRequestsCreateRequest           *hook.Hook[*ExpenseRequestsRequestEvent]
+	OnExpenseRequestsUpdateRequest           *hook.Hook[*ExpenseRequestsRequestEvent]
+	OnExpenseRequestsDeleteRequest           *hook.Hook[*ExpenseRequestsRequestEvent]
+	OnNotificationsEnrich                    *hook.Hook[*NotificationsEnrichEvent]
+	OnNotificationsValidate                  *hook.Hook[*NotificationsEvent]
+	OnNotificationsCreate                    *hook.Hook[*NotificationsEvent]
+	OnNotificationsCreateExecute             *hook.Hook[*NotificationsEvent]
+	OnNotificationsAfterCreateSuccess        *hook.Hook[*NotificationsEvent]
+	OnNotificationsAfterCreateError          *hook.Hook[*NotificationsErrorEvent]
+	OnNotificationsUpdate                    *hook.Hook[*NotificationsEvent]
+	OnNotificationsUpdateExecute             *hook.Hook[*NotificationsEvent]
+	OnNotificationsAfterUpdateSuccess        *hook.Hook[*NotificationsEvent]
+	OnNotificationsAfterUpdateError          *hook.Hook[*NotificationsErrorEvent]
+	OnNotificationsDelete                    *hook.Hook[*NotificationsEvent]
+	OnNotificationsDeleteExecute             *hook.Hook[*NotificationsEvent]
+	OnNotificationsAfterDeleteSuccess        *hook.Hook[*NotificationsEvent]
+	OnNotificationsAfterDeleteError          *hook.Hook[*NotificationsErrorEvent]
+	OnNotificationsListRequest               *hook.Hook[*NotificationsListRequestEvent]
+	OnNotificationsViewRequest               *hook.Hook[*NotificationsRequestEvent]
+	OnNotificationsCreateRequest             *hook.Hook[*NotificationsRequestEvent]
+	OnNotificationsUpdateRequest             *hook.Hook[*NotificationsRequestEvent]
+	OnNotificationsDeleteRequest             *hook.Hook[*NotificationsRequestEvent]
+	OnFamilyBalancesEnrich                   *hook.Hook[*FamilyBalancesEnrichEvent]
+	OnFamilyBalancesValidate                 *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesCreate                   *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesCreateExecute            *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesAfterCreateSuccess       *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesAfterCreateError         *hook.Hook[*FamilyBalancesErrorEvent]
+	OnFamilyBalancesUpdate                   *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesUpdateExecute            *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesAfterUpdateSuccess       *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesAfterUpdateError         *hook.Hook[*FamilyBalancesErrorEvent]
+	OnFamilyBalancesDelete                   *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesDeleteExecute            *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesAfterDeleteSuccess       *hook.Hook[*FamilyBalancesEvent]
+	OnFamilyBalancesAfterDeleteError         *hook.Hook[*FamilyBalancesErrorEvent]
+	OnFamilyBalancesListRequest              *hook.Hook[*FamilyBalancesListRequestEvent]
+	OnFamilyBalancesViewRequest              *hook.Hook[*FamilyBalancesRequestEvent]
+	OnFamilyBalancesCreateRequest            *hook.Hook[*FamilyBalancesRequestEvent]
+	OnFamilyBalancesUpdateRequest            *hook.Hook[*FamilyBalancesRequestEvent]
+	OnFamilyBalancesDeleteRequest            *hook.Hook[*FamilyBalancesRequestEvent]
 }
 
 // Create a new set of proxy hooks and register them
@@ -501,6 +573,63 @@ func NewProxyHooks(app core.App) *ProxyHooks {
 		OnDigiflazzEventsCreateRequest:           &hook.Hook[*DigiflazzEventsRequestEvent]{},
 		OnDigiflazzEventsUpdateRequest:           &hook.Hook[*DigiflazzEventsRequestEvent]{},
 		OnDigiflazzEventsDeleteRequest:           &hook.Hook[*DigiflazzEventsRequestEvent]{},
+		OnExpenseRequestsEnrich:                  &hook.Hook[*ExpenseRequestsEnrichEvent]{},
+		OnExpenseRequestsValidate:                &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsCreate:                  &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsCreateExecute:           &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsAfterCreateSuccess:      &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsAfterCreateError:        &hook.Hook[*ExpenseRequestsErrorEvent]{},
+		OnExpenseRequestsUpdate:                  &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsUpdateExecute:           &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsAfterUpdateSuccess:      &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsAfterUpdateError:        &hook.Hook[*ExpenseRequestsErrorEvent]{},
+		OnExpenseRequestsDelete:                  &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsDeleteExecute:           &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsAfterDeleteSuccess:      &hook.Hook[*ExpenseRequestsEvent]{},
+		OnExpenseRequestsAfterDeleteError:        &hook.Hook[*ExpenseRequestsErrorEvent]{},
+		OnExpenseRequestsListRequest:             &hook.Hook[*ExpenseRequestsListRequestEvent]{},
+		OnExpenseRequestsViewRequest:             &hook.Hook[*ExpenseRequestsRequestEvent]{},
+		OnExpenseRequestsCreateRequest:           &hook.Hook[*ExpenseRequestsRequestEvent]{},
+		OnExpenseRequestsUpdateRequest:           &hook.Hook[*ExpenseRequestsRequestEvent]{},
+		OnExpenseRequestsDeleteRequest:           &hook.Hook[*ExpenseRequestsRequestEvent]{},
+		OnNotificationsEnrich:                    &hook.Hook[*NotificationsEnrichEvent]{},
+		OnNotificationsValidate:                  &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsCreate:                    &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsCreateExecute:             &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsAfterCreateSuccess:        &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsAfterCreateError:          &hook.Hook[*NotificationsErrorEvent]{},
+		OnNotificationsUpdate:                    &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsUpdateExecute:             &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsAfterUpdateSuccess:        &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsAfterUpdateError:          &hook.Hook[*NotificationsErrorEvent]{},
+		OnNotificationsDelete:                    &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsDeleteExecute:             &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsAfterDeleteSuccess:        &hook.Hook[*NotificationsEvent]{},
+		OnNotificationsAfterDeleteError:          &hook.Hook[*NotificationsErrorEvent]{},
+		OnNotificationsListRequest:               &hook.Hook[*NotificationsListRequestEvent]{},
+		OnNotificationsViewRequest:               &hook.Hook[*NotificationsRequestEvent]{},
+		OnNotificationsCreateRequest:             &hook.Hook[*NotificationsRequestEvent]{},
+		OnNotificationsUpdateRequest:             &hook.Hook[*NotificationsRequestEvent]{},
+		OnNotificationsDeleteRequest:             &hook.Hook[*NotificationsRequestEvent]{},
+		OnFamilyBalancesEnrich:                   &hook.Hook[*FamilyBalancesEnrichEvent]{},
+		OnFamilyBalancesValidate:                 &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesCreate:                   &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesCreateExecute:            &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesAfterCreateSuccess:       &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesAfterCreateError:         &hook.Hook[*FamilyBalancesErrorEvent]{},
+		OnFamilyBalancesUpdate:                   &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesUpdateExecute:            &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesAfterUpdateSuccess:       &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesAfterUpdateError:         &hook.Hook[*FamilyBalancesErrorEvent]{},
+		OnFamilyBalancesDelete:                   &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesDeleteExecute:            &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesAfterDeleteSuccess:       &hook.Hook[*FamilyBalancesEvent]{},
+		OnFamilyBalancesAfterDeleteError:         &hook.Hook[*FamilyBalancesErrorEvent]{},
+		OnFamilyBalancesListRequest:              &hook.Hook[*FamilyBalancesListRequestEvent]{},
+		OnFamilyBalancesViewRequest:              &hook.Hook[*FamilyBalancesRequestEvent]{},
+		OnFamilyBalancesCreateRequest:            &hook.Hook[*FamilyBalancesRequestEvent]{},
+		OnFamilyBalancesUpdateRequest:            &hook.Hook[*FamilyBalancesRequestEvent]{},
+		OnFamilyBalancesDeleteRequest:            &hook.Hook[*FamilyBalancesRequestEvent]{},
 	}
 	pHooks.registerProxyHooks(app)
 	return pHooks
@@ -716,4 +845,61 @@ func (pHooks *ProxyHooks) registerProxyHooks(app core.App) {
 	registerProxyRequestEventHook(app.OnRecordCreateRequest("digiflazz_events"), pHooks.OnDigiflazzEventsCreateRequest)
 	registerProxyRequestEventHook(app.OnRecordUpdateRequest("digiflazz_events"), pHooks.OnDigiflazzEventsUpdateRequest)
 	registerProxyRequestEventHook(app.OnRecordDeleteRequest("digiflazz_events"), pHooks.OnDigiflazzEventsDeleteRequest)
+	registerProxyEnrichEventHook(app.OnRecordEnrich("expense_requests"), pHooks.OnExpenseRequestsEnrich)
+	registerProxyEventHook(app.OnRecordValidate("expense_requests"), pHooks.OnExpenseRequestsValidate)
+	registerProxyEventHook(app.OnRecordCreate("expense_requests"), pHooks.OnExpenseRequestsCreate)
+	registerProxyEventHook(app.OnRecordCreateExecute("expense_requests"), pHooks.OnExpenseRequestsCreateExecute)
+	registerProxyEventHook(app.OnRecordAfterCreateSuccess("expense_requests"), pHooks.OnExpenseRequestsAfterCreateSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterCreateError("expense_requests"), pHooks.OnExpenseRequestsAfterCreateError)
+	registerProxyEventHook(app.OnRecordUpdate("expense_requests"), pHooks.OnExpenseRequestsUpdate)
+	registerProxyEventHook(app.OnRecordUpdateExecute("expense_requests"), pHooks.OnExpenseRequestsUpdateExecute)
+	registerProxyEventHook(app.OnRecordAfterUpdateSuccess("expense_requests"), pHooks.OnExpenseRequestsAfterUpdateSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterUpdateError("expense_requests"), pHooks.OnExpenseRequestsAfterUpdateError)
+	registerProxyEventHook(app.OnRecordDelete("expense_requests"), pHooks.OnExpenseRequestsDelete)
+	registerProxyEventHook(app.OnRecordDeleteExecute("expense_requests"), pHooks.OnExpenseRequestsDeleteExecute)
+	registerProxyEventHook(app.OnRecordAfterDeleteSuccess("expense_requests"), pHooks.OnExpenseRequestsAfterDeleteSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterDeleteError("expense_requests"), pHooks.OnExpenseRequestsAfterDeleteError)
+	registerProxyListRequestEventHook(app.OnRecordsListRequest("expense_requests"), pHooks.OnExpenseRequestsListRequest)
+	registerProxyRequestEventHook(app.OnRecordViewRequest("expense_requests"), pHooks.OnExpenseRequestsViewRequest)
+	registerProxyRequestEventHook(app.OnRecordCreateRequest("expense_requests"), pHooks.OnExpenseRequestsCreateRequest)
+	registerProxyRequestEventHook(app.OnRecordUpdateRequest("expense_requests"), pHooks.OnExpenseRequestsUpdateRequest)
+	registerProxyRequestEventHook(app.OnRecordDeleteRequest("expense_requests"), pHooks.OnExpenseRequestsDeleteRequest)
+	registerProxyEnrichEventHook(app.OnRecordEnrich("notifications"), pHooks.OnNotificationsEnrich)
+	registerProxyEventHook(app.OnRecordValidate("notifications"), pHooks.OnNotificationsValidate)
+	registerProxyEventHook(app.OnRecordCreate("notifications"), pHooks.OnNotificationsCreate)
+	registerProxyEventHook(app.OnRecordCreateExecute("notifications"), pHooks.OnNotificationsCreateExecute)
+	registerProxyEventHook(app.OnRecordAfterCreateSuccess("notifications"), pHooks.OnNotificationsAfterCreateSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterCreateError("notifications"), pHooks.OnNotificationsAfterCreateError)
+	registerProxyEventHook(app.OnRecordUpdate("notifications"), pHooks.OnNotificationsUpdate)
+	registerProxyEventHook(app.OnRecordUpdateExecute("notifications"), pHooks.OnNotificationsUpdateExecute)
+	registerProxyEventHook(app.OnRecordAfterUpdateSuccess("notifications"), pHooks.OnNotificationsAfterUpdateSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterUpdateError("notifications"), pHooks.OnNotificationsAfterUpdateError)
+	registerProxyEventHook(app.OnRecordDelete("notifications"), pHooks.OnNotificationsDelete)
+	registerProxyEventHook(app.OnRecordDeleteExecute("notifications"), pHooks.OnNotificationsDeleteExecute)
+	registerProxyEventHook(app.OnRecordAfterDeleteSuccess("notifications"), pHooks.OnNotificationsAfterDeleteSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterDeleteError("notifications"), pHooks.OnNotificationsAfterDeleteError)
+	registerProxyListRequestEventHook(app.OnRecordsListRequest("notifications"), pHooks.OnNotificationsListRequest)
+	registerProxyRequestEventHook(app.OnRecordViewRequest("notifications"), pHooks.OnNotificationsViewRequest)
+	registerProxyRequestEventHook(app.OnRecordCreateRequest("notifications"), pHooks.OnNotificationsCreateRequest)
+	registerProxyRequestEventHook(app.OnRecordUpdateRequest("notifications"), pHooks.OnNotificationsUpdateRequest)
+	registerProxyRequestEventHook(app.OnRecordDeleteRequest("notifications"), pHooks.OnNotificationsDeleteRequest)
+	registerProxyEnrichEventHook(app.OnRecordEnrich("family_balances"), pHooks.OnFamilyBalancesEnrich)
+	registerProxyEventHook(app.OnRecordValidate("family_balances"), pHooks.OnFamilyBalancesValidate)
+	registerProxyEventHook(app.OnRecordCreate("family_balances"), pHooks.OnFamilyBalancesCreate)
+	registerProxyEventHook(app.OnRecordCreateExecute("family_balances"), pHooks.OnFamilyBalancesCreateExecute)
+	registerProxyEventHook(app.OnRecordAfterCreateSuccess("family_balances"), pHooks.OnFamilyBalancesAfterCreateSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterCreateError("family_balances"), pHooks.OnFamilyBalancesAfterCreateError)
+	registerProxyEventHook(app.OnRecordUpdate("family_balances"), pHooks.OnFamilyBalancesUpdate)
+	registerProxyEventHook(app.OnRecordUpdateExecute("family_balances"), pHooks.OnFamilyBalancesUpdateExecute)
+	registerProxyEventHook(app.OnRecordAfterUpdateSuccess("family_balances"), pHooks.OnFamilyBalancesAfterUpdateSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterUpdateError("family_balances"), pHooks.OnFamilyBalancesAfterUpdateError)
+	registerProxyEventHook(app.OnRecordDelete("family_balances"), pHooks.OnFamilyBalancesDelete)
+	registerProxyEventHook(app.OnRecordDeleteExecute("family_balances"), pHooks.OnFamilyBalancesDeleteExecute)
+	registerProxyEventHook(app.OnRecordAfterDeleteSuccess("family_balances"), pHooks.OnFamilyBalancesAfterDeleteSuccess)
+	registerProxyErrorEventHook(app.OnRecordAfterDeleteError("family_balances"), pHooks.OnFamilyBalancesAfterDeleteError)
+	registerProxyListRequestEventHook(app.OnRecordsListRequest("family_balances"), pHooks.OnFamilyBalancesListRequest)
+	registerProxyRequestEventHook(app.OnRecordViewRequest("family_balances"), pHooks.OnFamilyBalancesViewRequest)
+	registerProxyRequestEventHook(app.OnRecordCreateRequest("family_balances"), pHooks.OnFamilyBalancesCreateRequest)
+	registerProxyRequestEventHook(app.OnRecordUpdateRequest("family_balances"), pHooks.OnFamilyBalancesUpdateRequest)
+	registerProxyRequestEventHook(app.OnRecordDeleteRequest("family_balances"), pHooks.OnFamilyBalancesDeleteRequest)
 }

@@ -20,10 +20,14 @@ type TransactionDTO struct {
 	CategoryID string          `json:"category_id"`
 	Type       TransactionType `json:"type"`
 	Amount     float64         `json:"amount"`
-	Note       string          `json:"note"`
-	Date       time.Time       `json:"date"`
-	CreatedAt  time.Time       `json:"created_at"`
-	UpdatedAt  time.Time       `json:"updated_at"`
+	// AmountUSD adalah Amount dikonversi ke USD memakai ExchangeRate saat transaksi dibuat.
+	AmountUSD float64 `json:"amount_usd"`
+	// ExchangeRate adalah kurs USD/IDR yang dipakai (0 kalau gagal ambil kurs).
+	ExchangeRate float64   `json:"exchange_rate"`
+	Note         string    `json:"note"`
+	Date         time.Time `json:"date"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 
 	// Expanded fields (optional, populated when expand is used)
 	Family   *FamilyExpand   `json:"family,omitempty"`
@@ -57,8 +61,11 @@ type CreateTransactionRequest struct {
 	CategoryID string          `json:"category_id" validate:"required"`
 	Type       TransactionType `json:"type" validate:"required,oneof=income expense" enums:"income,expense"`
 	Amount     float64         `json:"amount" validate:"required,gt=0"`
-	Note       string          `json:"note"`
-	Date       string          `json:"date" validate:"required"` // ISO format
+	// AmountUSD dan ExchangeRate diisi oleh service dari kurs live, bukan dari client.
+	AmountUSD    float64 `json:"-"`
+	ExchangeRate float64 `json:"-"`
+	Note         string  `json:"note"`
+	Date         string  `json:"date" validate:"required"` // ISO format
 }
 
 // UpdateTransactionRequest untuk update
@@ -66,8 +73,12 @@ type UpdateTransactionRequest struct {
 	CategoryID string          `json:"category_id,omitempty"`
 	Type       TransactionType `json:"type,omitempty" validate:"omitempty,oneof=income expense" enums:"income,expense"`
 	Amount     float64         `json:"amount,omitempty"`
-	Note       string          `json:"note,omitempty"`
-	Date       string          `json:"date,omitempty"`
+	// AmountUSD dan ExchangeRate dihitung ulang oleh service saat Amount berubah,
+	// bukan dikirim client.
+	AmountUSD    float64 `json:"-"`
+	ExchangeRate float64 `json:"-"`
+	Note         string  `json:"note,omitempty"`
+	Date         string  `json:"date,omitempty"`
 }
 
 // TransactionListResponse wraps paginated transaction list responses.

@@ -90,16 +90,19 @@ type RoleSelectType int
 
 const (
 	Owner RoleSelectType = iota
+	Admin
 	Member
 )
 
 var zzRoleSelectTypeSelectNameMap = map[string]RoleSelectType{
 	"owner":  0,
-	"member": 1,
+	"admin":  1,
+	"member": 2,
 }
 var zzRoleSelectTypeSelectIotaMap = map[RoleSelectType]string{
 	0: "owner",
-	1: "member",
+	1: "admin",
+	2: "member",
 }
 
 type FamilyMembers struct {
@@ -158,6 +161,22 @@ func (p *FamilyMembers) SetUserId(userId *Users) {
 	p.SetExpand(e)
 }
 
+func (p *FamilyMembers) Created() types.DateTime {
+	return p.GetDateTime("created")
+}
+
+func (p *FamilyMembers) SetCreated(created types.DateTime) {
+	p.Set("created", created)
+}
+
+func (p *FamilyMembers) Updated() types.DateTime {
+	return p.GetDateTime("updated")
+}
+
+func (p *FamilyMembers) SetUpdated(updated types.DateTime) {
+	p.Set("updated", updated)
+}
+
 func (p *FamilyMembers) Role() RoleSelectType {
 	option := p.GetString("role")
 	i, ok := zzRoleSelectTypeSelectNameMap[option]
@@ -173,22 +192,6 @@ func (p *FamilyMembers) SetRole(role RoleSelectType) {
 		panic("Unknown select value")
 	}
 	p.Set("role", i)
-}
-
-func (p *FamilyMembers) Created() types.DateTime {
-	return p.GetDateTime("created")
-}
-
-func (p *FamilyMembers) SetCreated(created types.DateTime) {
-	p.Set("created", created)
-}
-
-func (p *FamilyMembers) Updated() types.DateTime {
-	return p.GetDateTime("updated")
-}
-
-func (p *FamilyMembers) SetUpdated(updated types.DateTime) {
-	p.Set("updated", updated)
 }
 
 type TypeSelectType int
@@ -414,6 +417,22 @@ func (p *Transactions) Amount() float64 {
 
 func (p *Transactions) SetAmount(amount float64) {
 	p.Set("amount", amount)
+}
+
+func (p *Transactions) AmountUsd() float64 {
+	return p.GetFloat("amount_usd")
+}
+
+func (p *Transactions) SetAmountUsd(amountUsd float64) {
+	p.Set("amount_usd", amountUsd)
+}
+
+func (p *Transactions) ExchangeRate() float64 {
+	return p.GetFloat("exchange_rate")
+}
+
+func (p *Transactions) SetExchangeRate(exchangeRate float64) {
+	p.Set("exchange_rate", exchangeRate)
 }
 
 func (p *Transactions) Note() string {
@@ -842,7 +861,7 @@ const (
 	Processing
 	Success
 	Failed
-	Cancelled
+	Canceled
 )
 
 var zzStatusSelectTypeSelectNameMap = map[string]StatusSelectType{
@@ -851,7 +870,7 @@ var zzStatusSelectTypeSelectNameMap = map[string]StatusSelectType{
 	"processing": 2,
 	"success":    3,
 	"failed":     4,
-	"cancelled":  5,
+	"canceled":   5,
 }
 var zzStatusSelectTypeSelectIotaMap = map[StatusSelectType]string{
 	0: "inquiry",
@@ -859,7 +878,7 @@ var zzStatusSelectTypeSelectIotaMap = map[StatusSelectType]string{
 	2: "processing",
 	3: "success",
 	4: "failed",
-	5: "cancelled",
+	5: "canceled",
 }
 
 type DigiflazzOrders struct {
@@ -1204,5 +1223,411 @@ func (p *DigiflazzEvents) Updated() types.DateTime {
 }
 
 func (p *DigiflazzEvents) SetUpdated(updated types.DateTime) {
+	p.Set("updated", updated)
+}
+
+type StatusSelectType2 int
+
+const (
+	Pending2 StatusSelectType2 = iota
+	Approved
+	Rejected
+	Cancelled
+)
+
+var zzStatusSelectType2SelectNameMap = map[string]StatusSelectType2{
+	"pending":   0,
+	"approved":  1,
+	"rejected":  2,
+	"cancelled": 3,
+}
+var zzStatusSelectType2SelectIotaMap = map[StatusSelectType2]string{
+	0: "pending",
+	1: "approved",
+	2: "rejected",
+	3: "cancelled",
+}
+
+type ExpenseRequests struct {
+	core.BaseRecordProxy
+}
+
+func (p *ExpenseRequests) CollectionName() string {
+	return "expense_requests"
+}
+
+func (p *ExpenseRequests) FamilyId() *Families {
+	var proxy *Families
+	if rel := p.ExpandedOne("family_id"); rel != nil {
+		proxy = &Families{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *ExpenseRequests) SetFamilyId(familyId *Families) {
+	var id string
+	if familyId != nil {
+		id = familyId.Id
+	}
+	p.Record.Set("family_id", id)
+	e := p.Expand()
+	if familyId != nil {
+		e["family_id"] = familyId.Record
+	} else {
+		delete(e, "family_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *ExpenseRequests) RequestedBy() *Users {
+	var proxy *Users
+	if rel := p.ExpandedOne("requested_by"); rel != nil {
+		proxy = &Users{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *ExpenseRequests) SetRequestedBy(requestedBy *Users) {
+	var id string
+	if requestedBy != nil {
+		id = requestedBy.Id
+	}
+	p.Record.Set("requested_by", id)
+	e := p.Expand()
+	if requestedBy != nil {
+		e["requested_by"] = requestedBy.Record
+	} else {
+		delete(e, "requested_by")
+	}
+	p.SetExpand(e)
+}
+
+func (p *ExpenseRequests) CategoryId() *Categories {
+	var proxy *Categories
+	if rel := p.ExpandedOne("category_id"); rel != nil {
+		proxy = &Categories{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *ExpenseRequests) SetCategoryId(categoryId *Categories) {
+	var id string
+	if categoryId != nil {
+		id = categoryId.Id
+	}
+	p.Record.Set("category_id", id)
+	e := p.Expand()
+	if categoryId != nil {
+		e["category_id"] = categoryId.Record
+	} else {
+		delete(e, "category_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *ExpenseRequests) Amount() float64 {
+	return p.GetFloat("amount")
+}
+
+func (p *ExpenseRequests) SetAmount(amount float64) {
+	p.Set("amount", amount)
+}
+
+func (p *ExpenseRequests) Note() string {
+	return p.GetString("note")
+}
+
+func (p *ExpenseRequests) SetNote(note string) {
+	p.Set("note", note)
+}
+
+func (p *ExpenseRequests) Status() StatusSelectType2 {
+	option := p.GetString("status")
+	i, ok := zzStatusSelectType2SelectNameMap[option]
+	if !ok {
+		panic("Unknown select value")
+	}
+	return i
+}
+
+func (p *ExpenseRequests) SetStatus(status StatusSelectType2) {
+	i, ok := zzStatusSelectType2SelectIotaMap[status]
+	if !ok {
+		panic("Unknown select value")
+	}
+	p.Set("status", i)
+}
+
+func (p *ExpenseRequests) ApprovedBy() *Users {
+	var proxy *Users
+	if rel := p.ExpandedOne("approved_by"); rel != nil {
+		proxy = &Users{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *ExpenseRequests) SetApprovedBy(approvedBy *Users) {
+	var id string
+	if approvedBy != nil {
+		id = approvedBy.Id
+	}
+	p.Record.Set("approved_by", id)
+	e := p.Expand()
+	if approvedBy != nil {
+		e["approved_by"] = approvedBy.Record
+	} else {
+		delete(e, "approved_by")
+	}
+	p.SetExpand(e)
+}
+
+func (p *ExpenseRequests) ApprovedAt() types.DateTime {
+	return p.GetDateTime("approved_at")
+}
+
+func (p *ExpenseRequests) SetApprovedAt(approvedAt types.DateTime) {
+	p.Set("approved_at", approvedAt)
+}
+
+func (p *ExpenseRequests) RejectionNote() string {
+	return p.GetString("rejection_note")
+}
+
+func (p *ExpenseRequests) SetRejectionNote(rejectionNote string) {
+	p.Set("rejection_note", rejectionNote)
+}
+
+func (p *ExpenseRequests) TransactionId() *Transactions {
+	var proxy *Transactions
+	if rel := p.ExpandedOne("transaction_id"); rel != nil {
+		proxy = &Transactions{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *ExpenseRequests) SetTransactionId(transactionId *Transactions) {
+	var id string
+	if transactionId != nil {
+		id = transactionId.Id
+	}
+	p.Record.Set("transaction_id", id)
+	e := p.Expand()
+	if transactionId != nil {
+		e["transaction_id"] = transactionId.Record
+	} else {
+		delete(e, "transaction_id")
+	}
+	p.SetExpand(e)
+}
+
+type TypeSelectType3 int
+
+const (
+	Expense_request_created TypeSelectType3 = iota
+	Expense_request_approved
+	Expense_request_rejected
+	Expense_request_cancelled
+)
+
+var zzTypeSelectType3SelectNameMap = map[string]TypeSelectType3{
+	"expense_request_created":   0,
+	"expense_request_approved":  1,
+	"expense_request_rejected":  2,
+	"expense_request_cancelled": 3,
+}
+var zzTypeSelectType3SelectIotaMap = map[TypeSelectType3]string{
+	0: "expense_request_created",
+	1: "expense_request_approved",
+	2: "expense_request_rejected",
+	3: "expense_request_cancelled",
+}
+
+type Notifications struct {
+	core.BaseRecordProxy
+}
+
+func (p *Notifications) CollectionName() string {
+	return "notifications"
+}
+
+func (p *Notifications) UserId() *Users {
+	var proxy *Users
+	if rel := p.ExpandedOne("user_id"); rel != nil {
+		proxy = &Users{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *Notifications) SetUserId(userId *Users) {
+	var id string
+	if userId != nil {
+		id = userId.Id
+	}
+	p.Record.Set("user_id", id)
+	e := p.Expand()
+	if userId != nil {
+		e["user_id"] = userId.Record
+	} else {
+		delete(e, "user_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *Notifications) FamilyId() *Families {
+	var proxy *Families
+	if rel := p.ExpandedOne("family_id"); rel != nil {
+		proxy = &Families{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *Notifications) SetFamilyId(familyId *Families) {
+	var id string
+	if familyId != nil {
+		id = familyId.Id
+	}
+	p.Record.Set("family_id", id)
+	e := p.Expand()
+	if familyId != nil {
+		e["family_id"] = familyId.Record
+	} else {
+		delete(e, "family_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *Notifications) Type() TypeSelectType3 {
+	option := p.GetString("type")
+	i, ok := zzTypeSelectType3SelectNameMap[option]
+	if !ok {
+		panic("Unknown select value")
+	}
+	return i
+}
+
+func (p *Notifications) SetType(type_ TypeSelectType3) {
+	i, ok := zzTypeSelectType3SelectIotaMap[type_]
+	if !ok {
+		panic("Unknown select value")
+	}
+	p.Set("type", i)
+}
+
+func (p *Notifications) ReferenceId() string {
+	return p.GetString("reference_id")
+}
+
+func (p *Notifications) SetReferenceId(referenceId string) {
+	p.Set("reference_id", referenceId)
+}
+
+func (p *Notifications) Message() string {
+	return p.GetString("message")
+}
+
+func (p *Notifications) SetMessage(message string) {
+	p.Set("message", message)
+}
+
+func (p *Notifications) IsRead() bool {
+	return p.GetBool("is_read")
+}
+
+func (p *Notifications) SetIsRead(isRead bool) {
+	p.Set("is_read", isRead)
+}
+
+func (p *Notifications) Created() types.DateTime {
+	return p.GetDateTime("created")
+}
+
+func (p *Notifications) SetCreated(created types.DateTime) {
+	p.Set("created", created)
+}
+
+func (p *Notifications) Updated() types.DateTime {
+	return p.GetDateTime("updated")
+}
+
+func (p *Notifications) SetUpdated(updated types.DateTime) {
+	p.Set("updated", updated)
+}
+
+type FamilyBalances struct {
+	core.BaseRecordProxy
+}
+
+func (p *FamilyBalances) CollectionName() string {
+	return "family_balances"
+}
+
+func (p *FamilyBalances) FamilyId() *Families {
+	var proxy *Families
+	if rel := p.ExpandedOne("family_id"); rel != nil {
+		proxy = &Families{}
+		proxy.Record = rel
+	}
+	return proxy
+}
+
+func (p *FamilyBalances) SetFamilyId(familyId *Families) {
+	var id string
+	if familyId != nil {
+		id = familyId.Id
+	}
+	p.Record.Set("family_id", id)
+	e := p.Expand()
+	if familyId != nil {
+		e["family_id"] = familyId.Record
+	} else {
+		delete(e, "family_id")
+	}
+	p.SetExpand(e)
+}
+
+func (p *FamilyBalances) Balance() float64 {
+	return p.GetFloat("balance")
+}
+
+func (p *FamilyBalances) SetBalance(balance float64) {
+	p.Set("balance", balance)
+}
+
+func (p *FamilyBalances) TotalIncome() float64 {
+	return p.GetFloat("total_income")
+}
+
+func (p *FamilyBalances) SetTotalIncome(totalIncome float64) {
+	p.Set("total_income", totalIncome)
+}
+
+func (p *FamilyBalances) TotalExpense() float64 {
+	return p.GetFloat("total_expense")
+}
+
+func (p *FamilyBalances) SetTotalExpense(totalExpense float64) {
+	p.Set("total_expense", totalExpense)
+}
+
+func (p *FamilyBalances) Created() types.DateTime {
+	return p.GetDateTime("created")
+}
+
+func (p *FamilyBalances) SetCreated(created types.DateTime) {
+	p.Set("created", created)
+}
+
+func (p *FamilyBalances) Updated() types.DateTime {
+	return p.GetDateTime("updated")
+}
+
+func (p *FamilyBalances) SetUpdated(updated types.DateTime) {
 	p.Set("updated", updated)
 }

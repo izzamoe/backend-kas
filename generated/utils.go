@@ -8,7 +8,7 @@ import (
 )
 
 type Proxy interface {
-	Users | Families | FamilyMembers | Categories | Transactions | File | Jenis | DigiflazzCredentials | DigiflazzProducts | DigiflazzOrders | DigiflazzEvents
+	Users | Families | FamilyMembers | Categories | Transactions | File | Jenis | DigiflazzCredentials | DigiflazzProducts | DigiflazzOrders | DigiflazzEvents | ExpenseRequests | Notifications | FamilyBalances
 }
 
 // This interface constrains a type parameter of
@@ -147,6 +147,34 @@ var Relations = map[string]map[string][]RelationField{
 	"digiflazz_events": {
 		"digiflazz_orders": {
 			{"order_id", false},
+		},
+	},
+	"expense_requests": {
+		"users": {
+			{"requested_by", false},
+			{"approved_by", false},
+		},
+		"families": {
+			{"family_id", false},
+		},
+		"categories": {
+			{"category_id", false},
+		},
+		"transactions": {
+			{"transaction_id", false},
+		},
+	},
+	"notifications": {
+		"users": {
+			{"user_id", false},
+		},
+		"families": {
+			{"family_id", false},
+		},
+	},
+	"family_balances": {
+		"families": {
+			{"family_id", false},
 		},
 	},
 }

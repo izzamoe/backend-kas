@@ -78,12 +78,13 @@ type FamilyMembers struct {
 	Id        string
 	family_id *Families
 	user_id   *Users
+	created   types.DateTime
+	updated   types.DateTime
 	// select: RoleSelectType
 	// - owner
+	// - admin
 	// - member
-	role    int
-	created types.DateTime
-	updated types.DateTime
+	role int
 }
 
 type Categories struct {
@@ -107,13 +108,15 @@ type Categories struct {
 type Transactions struct {
 	// collection-name: transactions
 	// system: id
-	Id          string
-	family_id   *Families
-	created_by  *Users
-	category_id *Categories
-	amount      float64
-	note        string
-	date        types.DateTime
+	Id            string
+	family_id     *Families
+	created_by    *Users
+	category_id   *Categories
+	amount        float64
+	amount_usd    float64
+	exchange_rate float64
+	note          string
+	date          types.DateTime
 	// select: TypeSelectType
 	// - income
 	// - expense
@@ -199,7 +202,7 @@ type DigiflazzOrders struct {
 	// - processing
 	// - success
 	// - failed
-	// - cancelled
+	// - canceled
 	status         int
 	price          float64
 	admin          float64
@@ -234,6 +237,58 @@ type DigiflazzEvents struct {
 	payload       string
 	response      string
 	source        string
+	created       types.DateTime
+	updated       types.DateTime
+}
+
+type ExpenseRequests struct {
+	// collection-name: expense_requests
+	family_id *Families
+	// system: id
+	Id           string
+	requested_by *Users
+	category_id  *Categories
+	amount       float64
+	note         string
+	// select: StatusSelectType
+	// - pending
+	// - approved
+	// - rejected
+	// - cancelled
+	status         int
+	approved_by    *Users
+	approved_at    types.DateTime
+	rejection_note string
+	transaction_id *Transactions
+}
+
+type Notifications struct {
+	// collection-name: notifications
+	// system: id
+	Id        string
+	user_id   *Users
+	family_id *Families
+	// select: TypeSelectType
+	// - expense_request_created
+	// - expense_request_approved
+	// - expense_request_rejected
+	// - expense_request_cancelled
+	type_        int
+	reference_id string
+	message      string
+	is_read      bool
+	created      types.DateTime
+	updated      types.DateTime
+}
+
+type FamilyBalances struct {
+	// collection-name: family_balances
+	// system: id
+	Id            string
+	family_id     *Families
+	balance       float64
+	total_income  float64
+	total_expense float64
 	created       types.DateTime
 	updated       types.DateTime
 }
