@@ -51,6 +51,7 @@ Thumbs.db
 
 # Local AI tooling config
 opencode.jsonc
+.omc/
 
 # Local dev scripts and API dumps
 check_balance.sh

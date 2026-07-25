@@ -13,10 +13,14 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"github.com/pocketbase/pocketbase/tools/osutils"
 
+	"kas/generated"
 	"kas/internal/handler"
+	"kas/internal/hooks"
 	"kas/internal/middleware"
 	"kas/internal/repository"
+	"kas/internal/scheduler"
 	"kas/internal/service"
+
 	// Enable migrations
 	_ "kas/migrations"
 )
@@ -108,31 +112,22 @@ func main() { //nolint:funlen // Dependency injection wiring requires all compon
 		digiflazzOrderHandler.RegisterRoutes(se)
 		digiflazzWebhookHandler.RegisterRoutes(se)
 
+		if _, err := os.Stat("./files_public"); err == nil {
+			se.Router.GET("/files/{path...}", apis.Static(os.DirFS("./files_public"), false))
+		}
+
 		// Serves embedded static files from pb_public.
 		se.Router.GET("/{path...}", apis.Static(publicFS, false))
 
 		return se.Next()
 	})
 
-	app.OnRecordAfterCreateSuccess("families").BindFunc(func(e *core.RecordEvent) error {
-		familyID := e.Record.Id
-		if err := categoryRepo.SeedMasterCategories(e.App, familyID); err != nil {
-			e.App.Logger().Warn("failed to seed master categories", "family_id", familyID, "error", err)
-		}
-		return nil
-	})
+	ph := generated.NewProxyHooks(app)
 
-	priceSyncSchedule := os.Getenv("DIGIFLAZZ_PRICE_SYNC_INTERVAL")
-	if priceSyncSchedule == "" {
-		priceSyncSchedule = "*/30 * * * *"
-	}
-	orderPollSchedule := os.Getenv("DIGIFLAZZ_ORDER_POLL_INTERVAL")
-	if orderPollSchedule == "" {
-		orderPollSchedule = "*/5 * * * *"
-	}
+	hooks.RegisterFamilyHooks(ph, categoryRepo)
+	hooks.RegisterTransactionHooks(ph)
 
-	app.Cron().MustAdd("digiflazz-price-sync", priceSyncSchedule, digiflazzCronService.RunPriceSync)
-	app.Cron().MustAdd("digiflazz-order-poll", orderPollSchedule, digiflazzCronService.RunOrderPoll)
+	scheduler.Register(app, digiflazzCronService)
 
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
